@@ -1,0 +1,28 @@
+{% extends "reports/base.html" %}
+{% block content %}
+<div class="summary">
+  <div class="summary-card"><div class="label">Total de produtos</div><div class="value">{{ total_products }}</div></div>
+  <div class="summary-card"><div class="label">Valor em estoque</div><div class="value">{{ total_value }}</div></div>
+  <div class="summary-card"><div class="label">Itens com estoque baixo</div><div class="value">{{ low_stock_count }}</div></div>
+</div>
+
+<table>
+  <tr>
+    <th>Produto</th><th>Código</th><th>Categoria</th><th>Qtd.</th><th>Preço</th><th>Valor total</th><th>Validade</th>
+  </tr>
+  {% for p in products %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.code }}</td>
+    <td>{{ p.category_label }}</td>
+    <td>
+      {{ p.quantity }}
+      {% if p.low_stock %}<span class="badge badge-red">baixo</span>{% endif %}
+    </td>
+    <td>{{ p.price_fmt }}</td>
+    <td>{{ p.total_fmt }}</td>
+    <td>{{ p.expiry_fmt }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

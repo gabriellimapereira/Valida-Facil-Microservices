@@ -1,0 +1,28 @@
+{% extends "reports/base.html" %}
+{% block content %}
+<div class="summary">
+  <div class="summary-card"><div class="label">Movimentações no período</div><div class="value">{{ total_movements }}</div></div>
+  <div class="summary-card"><div class="label">Entradas</div><div class="value">{{ total_in }}</div></div>
+  <div class="summary-card"><div class="label">Saídas</div><div class="value">{{ total_out }}</div></div>
+</div>
+
+<table>
+  <tr>
+    <th>Data</th><th>Produto</th><th>Código</th><th>Tipo</th><th>Variação</th><th>Observação</th>
+  </tr>
+  {% for m in movements %}
+  <tr>
+    <td>{{ m.date_fmt }}</td>
+    <td>{{ m.product_name }}</td>
+    <td>{{ m.product_code }}</td>
+    <td>
+      {% if m.movement_type == 'entrada' %}<span class="badge badge-teal">entrada</span>
+      {% elif m.movement_type == 'saida' %}<span class="badge badge-red">saída</span>
+      {% else %}<span class="badge badge-amber">ajuste</span>{% endif %}
+    </td>
+    <td>{{ m.delta_fmt }}</td>
+    <td>{{ m.note or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

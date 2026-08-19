@@ -1,0 +1,70 @@
+"""
+Lógica de movimentação de estoque.
+
+A escrita em si (atualizar `products.quantity` + inserir em
+`stock_movements`) acontece dentro de uma função do próprio Postgres
+(`apply_stock_movement`, ver supabase/functions.sql) para garantir que as
+duas operações aconteçam de forma atômica — nunca fica um registro de
+movimentação "órfão" sem a quantidade ter sido de fato atualizada, e
+vice-versa. Esse arquivo só chama essa função via RPC e decide o que fazer
+com o resultado (ex.: dispara e-mail se cruzou o estoque mínimo).
+"""
+import logging
+from uuid import UUID
+
+from supabase import Client
+
+from app.schemas.movement import MovementCreate, MovementResult
+from app.services.email_service import send_email
+from app.utils.templating import render
+
+logger = logging.getLogger("valida_facil.stock")
+
+
+def apply_movement(client: Client, payload: MovementCreate) -> MovementResult:
+    response = client.rpc(
+        "apply_stock_movement",
+        {
+            "p_product_id": str(payload.product_id),
+            "p_movement_type": payload.movement_type,
+            "p_quantity_delta": payload.quantity_delta,
+            "p_note": payload.note,
+        },
+    ).execute()
+
+    data = response.data
+    # supabase-py pode retornar a função como lista (quando declarada como
+    # "returns setof") ou objeto único — normalizamos os dois casos.
+    if isinstance(data, list):
+        data = data[0] if data else {}
+
+    if not data:
+        raise ValueError("Não foi possível registrar a movimentação de estoque.")
+
+    return MovementResult(**data)
+
+
+def notify_low_stock_if_needed(result: MovementResult, company_name: str) -> None:
+    if not result.crossed_low_stock or not result.notification_email:
+        return
+
+    html = render(
+        "emails/low_stock.html",
+        product_name=result.product_name,
+        new_quantity=result.new_quantity,
+        min_stock=result.min_stock,
+        company_name=company_name,
+    )
+    send_email(
+        to=result.notification_email,
+        subject=f"⚠️ Estoque baixo — {result.product_name}",
+        html_body=html,
+    )
+
+
+def list_low_stock(client: Client) -> list[dict]:
+    """Retorna os produtos da empresa do usuário logado (RLS aplica)
+    que já estão em quantidade <= estoque mínimo."""
+    resp = client.table("products").select("*").execute()
+    products = resp.data or []
+    return [p for p in products if p["quantity"] <= p["min_stock"]]

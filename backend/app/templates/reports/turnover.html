@@ -1,0 +1,19 @@
+{% extends "reports/base.html" %}
+{% block content %}
+<div class="summary">
+  <div class="summary-card"><div class="label">Produtos analisados</div><div class="value">{{ total_products }}</div></div>
+  <div class="summary-card"><div class="label">Unidades movimentadas</div><div class="value">{{ total_units }}</div></div>
+</div>
+
+<table>
+  <tr><th>#</th><th>Produto</th><th>Código</th><th>Saídas no período</th></tr>
+  {% for p in ranking %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ p.name }}</td>
+    <td>{{ p.code }}</td>
+    <td>{{ p.total_out }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "reports/base.html" %}
+{% block content %}
+<div class="summary">
+  <div class="summary-card"><div class="label">Produtos no período</div><div class="value">{{ total }}</div></div>
+  <div class="summary-card"><div class="label">Janela analisada</div><div class="value">{{ window_days }} dias</div></div>
+</div>
+
+<table>
+  <tr><th>Produto</th><th>Código</th><th>Quantidade</th><th>Vencimento</th><th>Situação</th></tr>
+  {% for p in products %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ p.code }}</td>
+    <td>{{ p.quantity }}</td>
+    <td>{{ p.expiry_fmt }}</td>
+    <td>
+      {% if p.days_left <= 2 %}<span class="badge badge-red">{{ p.days_left }} dia(s)</span>
+      {% elif p.days_left <= 7 %}<span class="badge badge-amber">{{ p.days_left }} dia(s)</span>
+      {% else %}<span class="badge badge-teal">{{ p.days_left }} dia(s)</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
