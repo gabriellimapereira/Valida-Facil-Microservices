@@ -1,12 +1,14 @@
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/LoginPage";
+import OnboardingPage from "../pages/OnboardingPage";
 import DashboardPage from "../pages/DashboardPage";
 import StockPage from "../pages/StockPage";
 import ProfilePage from "../pages/ProfilePage";
 import NotFoundPage from "../pages/NotFoundPage";
 import AppShell from "../components/layout/AppShell";
 import PrivateRoute from "./PrivateRoute";
+import RequireCompany from "./RequireCompany";
 import FullScreenLoader from "../components/ui/FullScreenLoader";
 import { useAuth } from "../context/AuthContext";
 
@@ -29,10 +31,16 @@ export default function AppRoutes() {
       />
 
       <Route element={<PrivateRoute />}>
-        <Route element={<AppShell />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/estoque" element={<StockPage />} />
-          <Route path="/perfil" element={<ProfilePage />} />
+        {/* /onboarding fica fora do RequireCompany de propósito — é
+           justamente a rota que resolve "não ter empresa ainda". */}
+        <Route path="/onboarding" element={<OnboardingPage />} />
+
+        <Route element={<RequireCompany />}>
+          <Route element={<AppShell />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/estoque" element={<StockPage />} />
+            <Route path="/perfil" element={<ProfilePage />} />
+          </Route>
         </Route>
       </Route>
 

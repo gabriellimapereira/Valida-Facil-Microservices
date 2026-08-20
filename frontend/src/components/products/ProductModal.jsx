@@ -83,9 +83,25 @@ export default function ProductModal({ product, onClose, onSave }) {
               {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Quantidade</label>
-              <input type="number" min="0" value={form.quantity} onChange={(e) => set("quantity", e.target.value)} placeholder="0" className={inputCls(errors.quantity)} />
-              {errors.quantity && <p className="text-xs text-red-500 mt-1">{errors.quantity}</p>}
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                Quantidade {isEdit && <span className="text-slate-400 font-normal">(estoque inicial)</span>}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={form.quantity}
+                onChange={(e) => set("quantity", e.target.value)}
+                placeholder="0"
+                disabled={isEdit}
+                className={`${inputCls(errors.quantity)} ${isEdit ? "bg-slate-50 text-slate-400 cursor-not-allowed" : ""}`}
+              />
+              {isEdit ? (
+                <p className="text-xs text-slate-400 mt-1">
+                  Para alterar a quantidade, use "Registrar movimentação" na tabela — assim o histórico fica auditável.
+                </p>
+              ) : (
+                errors.quantity && <p className="text-xs text-red-500 mt-1">{errors.quantity}</p>
+              )}
             </div>
 
             <div>

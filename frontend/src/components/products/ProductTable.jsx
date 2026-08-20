@@ -1,9 +1,9 @@
 import React from "react";
-import { ArrowUpDown, ChevronLeft, ChevronRight, PackageSearch, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeftRight, ArrowUpDown, ChevronLeft, ChevronRight, PackageSearch, Pencil, Trash2 } from "lucide-react";
 import CategoryBadge from "../ui/CategoryBadge";
 import { brl, fmtDate, expiryUrgency, isLowStock } from "../../utils/formatters";
 
-export default function ProductTable({ items, page, totalPages, totalCount, pageSize, setPage, onEdit, onDelete }) {
+export default function ProductTable({ items, page, totalPages, totalCount, pageSize, setPage, onEdit, onDelete, onMovement }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -54,6 +54,9 @@ export default function ProductTable({ items, page, totalPages, totalCount, page
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => onMovement(p)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:text-amber-600 transition" title="Registrar movimentação">
+                        <ArrowLeftRight size={15} />
+                      </button>
                       <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-teal-50 hover:text-teal-600 transition" title="Editar">
                         <Pencil size={15} />
                       </button>

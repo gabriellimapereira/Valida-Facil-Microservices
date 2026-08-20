@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { FileDown, Plus } from "lucide-react";
 import ProductFilters from "../components/products/ProductFilters";
 import ProductTable from "../components/products/ProductTable";
 import ProductModal from "../components/products/ProductModal";
 import ConfirmDeleteModal from "../components/products/ConfirmDeleteModal";
+import MovementModal from "../components/products/MovementModal";
+import ReportModal from "../components/products/ReportModal";
 import { useProducts } from "../context/ProductContext";
 import { useToast } from "../context/ToastContext";
+import * as movementService from "../services/movementService";
+import * as reportService from "../services/reportService";
 
 const PAGE_SIZE = 8;
 const DEFAULT_FILTERS = { search: "", category: "all", dateFrom: "", dateTo: "", sortPrice: "none" };
 
 export default function StockPage() {
-  const { products, addProduct, editProduct, removeProduct } = useProducts();
+  const { products, addProduct, editProduct, removeProduct, syncProductQuantity } = useProducts();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -23,6 +27,8 @@ export default function StockPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [movingProduct, setMovingProduct] = useState(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   // Abre o modal de cadastro automaticamente ao chegar via /estoque?novo=1
   useEffect(() => {
@@ -91,6 +97,31 @@ export default function StockPage() {
     }
   };
 
+  // Passa pelo backend (POST /movements): atualiza a quantidade + grava o
+  // histórico numa transação só, e decide lá se dispara e-mail de estoque
+  // baixo — por isso não editamos products.quantity direto pelo Supabase.
+  const handleMovementSubmit = async ({ movementType, quantityDelta, note }) => {
+    const result = await movementService.recordMovement({
+      productId: movingProduct.id,
+      movementType,
+      quantityDelta,
+      note,
+    });
+    syncProductQuantity(result.productId, result.newQuantity);
+    addToast(
+      result.crossedLowStock
+        ? `Movimentação registrada. Estoque abaixo do mínimo — alerta enviado por e-mail.`
+        : "Movimentação registrada."
+    );
+    setMovingProduct(null);
+  };
+
+  const handleGenerateReport = async (params) => {
+    const { url, filename } = await reportService.generateReport(params);
+    window.open(url, "_blank", "noopener,noreferrer");
+    addToast(`Relatório "${filename}" gerado. O link expira em alguns minutos.`);
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -98,13 +129,22 @@ export default function StockPage() {
           <h2 className="text-xl font-bold text-slate-900">Gestão de estoque</h2>
           <p className="text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
-          className="inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-amber-600/20"
-        >
-          <Plus size={17} />
-          Novo produto
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setReportModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition"
+          >
+            <FileDown size={17} />
+            Gerar relatório
+          </button>
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true); }}
+            className="inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-amber-600/20"
+          >
+            <Plus size={17} />
+            Novo produto
+          </button>
+        </div>
       </div>
 
       <ProductFilters
@@ -125,6 +165,7 @@ export default function StockPage() {
         setPage={setPage}
         onEdit={(p) => { setEditing(p); setModalOpen(true); }}
         onDelete={(p) => setDeleting(p)}
+        onMovement={(p) => setMovingProduct(p)}
       />
 
       {modalOpen && (
@@ -136,6 +177,18 @@ export default function StockPage() {
         />
       )}
       <ConfirmDeleteModal product={deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete} />
+
+      {movingProduct && (
+        <MovementModal
+          product={movingProduct}
+          onClose={() => setMovingProduct(null)}
+          onSubmit={handleMovementSubmit}
+        />
+      )}
+
+      {reportModalOpen && (
+        <ReportModal onClose={() => setReportModalOpen(false)} onSubmit={handleGenerateReport} />
+      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export default function Sidebar({ company, mobileOpen, setMobileOpen, collapsed,
             <Boxes size={18} className="text-white" />
           </div>
           <span className={`text-white font-semibold tracking-tight whitespace-nowrap ${collapsed ? "lg:hidden" : ""}`}>
-            EstoquePro
+            Valida Fácil
           </span>
           <button className="ml-auto lg:hidden text-slate-400" onClick={() => setMobileOpen(false)}>
             <X size={20} />

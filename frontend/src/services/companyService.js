@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { apiClient } from "../lib/apiClient";
 import { MOCK_COMPANY } from "../data/mockData";
 
 let memoryCompany = { ...MOCK_COMPANY };
@@ -54,6 +55,15 @@ export async function fetchCompany(companyId) {
     .maybeSingle();
 
   if (error) throw error;
+  return fromDb(data);
+}
+
+// Criar empresa precisa da chave service_role (o usuário ainda não tem
+// company_id, então o RLS bloquearia legitimamente a escrita) — por isso
+// essa chamada específica passa pelo backend, não vai direto ao Supabase.
+export async function createCompany(fields) {
+  const payload = toDb(fields);
+  const data = await apiClient.post("/companies", payload);
   return fromDb(data);
 }
 

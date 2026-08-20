@@ -45,8 +45,17 @@ export function ProductProvider({ children }) {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // Chamado depois de uma movimentação de estoque (POST /movements no
+  // backend) — atualiza a quantidade local com o valor confirmado pelo
+  // servidor, sem precisar buscar a lista inteira de novo.
+  const syncProductQuantity = (id, newQuantity) => {
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, quantity: newQuantity } : p)));
+  };
+
   return (
-    <ProductContext.Provider value={{ products, loading, addProduct, editProduct, removeProduct }}>
+    <ProductContext.Provider
+      value={{ products, loading, addProduct, editProduct, removeProduct, syncProductQuantity }}
+    >
       {children}
     </ProductContext.Provider>
   );

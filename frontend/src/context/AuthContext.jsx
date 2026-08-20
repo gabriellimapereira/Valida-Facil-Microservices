@@ -70,6 +70,10 @@ export function AuthProvider({ children }) {
     setProfile(null);
   };
 
+  const refreshProfile = async () => {
+    await loadProfile(user);
+  };
+
   const value = useMemo(
     () => ({
       user,
@@ -83,6 +87,7 @@ export function AuthProvider({ children }) {
       loading,
       signIn,
       signOut,
+      refreshProfile,
     }),
     [user, profile, loading]
   );
