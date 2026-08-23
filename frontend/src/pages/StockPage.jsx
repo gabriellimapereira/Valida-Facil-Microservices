@@ -129,7 +129,7 @@ export default function StockPage() {
           <h2 className="text-xl font-bold text-slate-900">Gestão de estoque</h2>
           <p className="text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <button
             onClick={() => setReportModalOpen(true)}
             className="inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition"

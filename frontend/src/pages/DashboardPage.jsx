@@ -46,15 +46,15 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard icon={Boxes} label="Total de produtos" value={totalProducts} accent="navy" sub={`${activeCategories} categorias ativas`} />
         <MetricCard icon={AlertTriangle} label="Perto de vencer" value={expiringSoon.length} accent="gold" sub="Nos próximos 15 dias" />
         <MetricCard icon={Layers} label="Categorias ativas" value={activeCategories} accent="teal" sub="Tipos de produto distintos" />
         <MetricCard icon={TrendingUp} label="Valor em estoque" value={brl(totalValue)} accent="light" sub={`${lowStockItems.length} item(ns) com estoque baixo`} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
