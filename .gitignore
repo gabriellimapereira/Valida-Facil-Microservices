@@ -9,3 +9,10 @@ env/
 .env.development
 .env.production
 *.env
+
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+coverage/

@@ -8,7 +8,10 @@ Supabase de verdade — sem precisar de rede, banco ou credenciais. Isso é o
 que permite testar toda a lógica de negócio isoladamente.
 """
 import os
+import os
 import sys
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -33,13 +36,21 @@ class FakeResult:
 
 
 class FakeQuery:
-    """Simula o encadeamento do supabase-py. Guarda as linhas de uma
-    tabela e só aplica os filtros de fato na hora do .execute()."""
+    """Simula o encadeamento do supabase-py. Guarda uma REFERÊNCIA à lista
+    de linhas da "tabela" (não uma cópia) — assim insert/update/delete
+    feitos numa chamada aparecem em chamadas seguintes a .table(), igual
+    ao banco de verdade. Os filtros (.eq(), .gte()...) só são aplicados de
+    fato no .execute(), na ordem em que o supabase-py normalmente recebe
+    (ex: .update(payload).eq("id", x).execute() só atualiza quem bate com
+    o filtro — uma versão anterior desse fake tinha esse bug)."""
 
     def __init__(self, rows):
-        self._rows = list(rows)
+        self._rows = rows
         self._filters = []
         self._mode = "select"  # select | single | maybe_single
+        self._pending_insert = None
+        self._pending_update = None
+        self._pending_delete = False
 
     # -- filtros --------------------------------------------------------
     def select(self, *_args, **_kwargs):
@@ -77,25 +88,49 @@ class FakeQuery:
         self._mode = "maybe_single"
         return self
 
-    # -- escrita (guardadas só pra inspeção, se o teste precisar) -------
+    # -- escrita ----------------------------------------------------------
     def insert(self, payload):
-        self._rows.append(payload)
+        self._pending_insert = payload if isinstance(payload, list) else [payload]
         return self
 
     def update(self, payload):
-        for row in self._rows:
-            row.update(payload)
+        self._pending_update = payload
         return self
 
     def delete(self):
-        self._rows = []
+        self._pending_delete = True
         return self
 
     def execute(self):
-        rows = [r for r in self._rows if all(f(r) for f in self._filters)]
+        if self._pending_insert is not None:
+            inserted = []
+            for item in self._pending_insert:
+                row = dict(item)
+                row.setdefault("id", str(uuid.uuid4()))
+                row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+                self._rows.append(row)
+                inserted.append(row)
+            if self._mode in ("single", "maybe_single"):
+                return FakeResult(inserted[0] if inserted else None)
+            return FakeResult(inserted)
+
+        matched = [r for r in self._rows if all(f(r) for f in self._filters)]
+
+        if self._pending_update is not None:
+            for row in matched:
+                row.update(self._pending_update)
+            if self._mode in ("single", "maybe_single"):
+                return FakeResult(matched[0] if matched else None)
+            return FakeResult(matched)
+
+        if self._pending_delete:
+            for row in list(matched):
+                self._rows.remove(row)
+            return FakeResult(matched)
+
         if self._mode in ("single", "maybe_single"):
-            return FakeResult(rows[0] if rows else None)
-        return FakeResult(rows)
+            return FakeResult(matched[0] if matched else None)
+        return FakeResult(matched)
 
 
 class _RpcCall:
@@ -106,17 +141,47 @@ class _RpcCall:
         return FakeResult(self._data)
 
 
+class FakeUser:
+    """Simula o objeto `user` que supabase.auth.get_user() devolve."""
+
+    def __init__(self, id, email):
+        self.id = id
+        self.email = email
+
+
+class FakeAuthResponse:
+    def __init__(self, user):
+        self.user = user
+
+
+class FakeAuth:
+    """Simula client.auth — usado nos testes de app/core/security.py.
+    `admin` pode ser atribuído depois (ex: pra testar convite de usuário)."""
+
+    def __init__(self, user=None, raise_error=False):
+        self._user = user
+        self._raise_error = raise_error
+        self.admin = None
+
+    def get_user(self, _token):
+        if self._raise_error:
+            raise Exception("Token inválido ou expirado (simulado).")
+        return FakeAuthResponse(self._user)
+
+
 class FakeSupabaseClient:
     """Dublê do client supabase-py. `tables` é um dict {nome: [linhas]};
     `rpc_results` é um dict {nome_da_funcao: retorno_simulado}."""
 
-    def __init__(self, tables=None, rpc_results=None):
+    def __init__(self, tables=None, rpc_results=None, auth=None):
         self.tables = {k: list(v) for k, v in (tables or {}).items()}
         self.rpc_results = rpc_results or {}
         self.rpc_calls = []
+        self.auth = auth or FakeAuth()
 
     def table(self, name):
-        return FakeQuery(self.tables.get(name, []))
+        self.tables.setdefault(name, [])
+        return FakeQuery(self.tables[name])
 
     def rpc(self, name, params):
         self.rpc_calls.append((name, params))
