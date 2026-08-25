@@ -21,7 +21,9 @@ export default function LoginPage() {
       addToast("Login realizado com sucesso!");
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err.message || "Não foi possível entrar. Verifique suas credenciais.");
+      const message = err.message || "Não foi possível entrar. Verifique suas credenciais.";
+      setError(message);
+      addToast(message, "error");
     }
   };
 
@@ -34,7 +36,7 @@ export default function LoginPage() {
           <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
             <Boxes size={22} className="text-white" />
           </div>
-          <span className="text-white font-semibold text-lg tracking-tight">Valida Fácil</span>
+          <span className="text-white font-semibold text-lg tracking-tight">EstoquePro</span>
         </div>
 
         <div className="relative">
@@ -66,7 +68,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
               <Boxes size={22} className="text-white" />
             </div>
-            <span className="text-slate-900 font-semibold text-lg">Valida Fácil</span>
+            <span className="text-slate-900 font-semibold text-lg">EstoquePro</span>
           </div>
 
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Bem-vindo de volta</h2>

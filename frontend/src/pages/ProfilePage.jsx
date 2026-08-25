@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, Building2, ImagePlus, Lock, Mail, Phone } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { useCompany } from "../context/CompanyContext";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
+import CharCounter from "../components/ui/CharCounter";
+
+const FIELD_LIMITS = { name: 200, phone: 20, address: 300 };
 
 export default function ProfilePage() {
+  const { user } = useAuth();
   const { company, saveCompany } = useCompany();
   const { addToast } = useToast();
   const [form, setForm] = useState(null);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwErr, setPwErr] = useState("");
+  const [pwSubmitting, setPwSubmitting] = useState(false);
 
   useEffect(() => {
     if (company) setForm({ ...company });
@@ -31,6 +37,7 @@ export default function ProfilePage() {
 
   const handleSavePassword = async (e) => {
     e.preventDefault();
+    if (pwSubmitting) return; // evita clique duplo disparando 2 pedidos seguidos
     if (!pw.current || !pw.next || !pw.confirm) {
       setPwErr("Preencha todos os campos de senha.");
       return;
@@ -44,12 +51,20 @@ export default function ProfilePage() {
       return;
     }
     setPwErr("");
+    setPwSubmitting(true);
     try {
-      await authService.requestPasswordReset(company.notificationEmail);
+      const isCurrentPasswordValid = await authService.verifyCurrentPassword(user.email, pw.current);
+      if (!isCurrentPasswordValid) {
+        setPwErr("Senha atual incorreta.");
+        return;
+      }
+      await authService.requestPasswordReset(user.email);
       setPw({ current: "", next: "", confirm: "" });
-      addToast("Enviamos um e-mail de confirmação para concluir a troca de senha.");
+      addToast(`Enviamos um e-mail de confirmação para ${user.email} pra concluir a troca de senha.`);
     } catch (err) {
       addToast(err.message || "Não foi possível iniciar a troca de senha.", "error");
+    } finally {
+      setPwSubmitting(false);
     }
   };
 
@@ -78,8 +93,9 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Nome da empresa</label>
             <div className="relative">
               <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={form.name} onChange={(e) => set("name", e.target.value)} className={inputCls} />
+              <input value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={FIELD_LIMITS.name} className={inputCls} />
             </div>
+            <CharCounter value={form.name} max={FIELD_LIMITS.name} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">E-mail principal (notificações)</label>
@@ -92,12 +108,13 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Telefone</label>
             <div className="relative">
               <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputCls} />
+              <input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={FIELD_LIMITS.phone} className={inputCls} />
             </div>
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Endereço</label>
-            <input value={form.address} onChange={(e) => set("address", e.target.value)} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition" />
+            <input value={form.address} onChange={(e) => set("address", e.target.value)} maxLength={FIELD_LIMITS.address} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition" />
+            <CharCounter value={form.address} max={FIELD_LIMITS.address} />
           </div>
         </div>
 
@@ -149,8 +166,12 @@ export default function ProfilePage() {
         )}
 
         <div className="flex justify-end pt-1">
-          <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition">
-            Alterar senha
+          <button
+            type="submit"
+            disabled={pwSubmitting}
+            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition"
+          >
+            {pwSubmitting ? "Enviando..." : "Alterar senha"}
           </button>
         </div>
       </form>

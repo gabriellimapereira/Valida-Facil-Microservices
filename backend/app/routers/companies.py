@@ -30,9 +30,19 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
 
     admin_client = service_client()
 
-    company_resp = admin_client.table("companies").insert(
-        payload.model_dump(exclude_none=True)
-    ).execute()
+    try:
+        company_resp = admin_client.table("companies").insert(
+            payload.model_dump(exclude_none=True)
+        ).execute()
+    except Exception as exc:
+        message = str(exc).lower()
+        if "duplicate" in message or "unique" in message or "cnpj" in message:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe uma empresa cadastrada com esse CNPJ.",
+            )
+        raise HTTPException(status_code=500, detail=f"Não foi possível criar a empresa: {exc}")
+
     if not company_resp.data:
         raise HTTPException(status_code=500, detail="Não foi possível criar a empresa.")
     company = company_resp.data[0]

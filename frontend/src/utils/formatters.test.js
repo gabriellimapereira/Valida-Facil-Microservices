@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { brl, fmtDate, daysUntil, expiryUrgency, isLowStock, catInfo } from "./formatters";
+import { brl, fmtDate, daysUntil, expiryUrgency, isLowStock, catInfo, formatCnpj } from "./formatters";
 
 describe("brl", () => {
   // O Intl do Node formata moeda pt-BR com um espaço "não-quebrável"
@@ -108,5 +108,31 @@ describe("catInfo", () => {
 
   it("cai no fallback (última categoria) quando o id não existe", () => {
     expect(catInfo("categoria-inexistente")).toEqual(catInfo("outros"));
+  });
+});
+
+describe("formatCnpj", () => {
+  it("aplica a máscara progressivamente conforme digita", () => {
+    expect(formatCnpj("1")).toBe("1");
+    expect(formatCnpj("12")).toBe("12");
+    expect(formatCnpj("123")).toBe("12.3");
+    expect(formatCnpj("12345678")).toBe("12.345.678");
+    expect(formatCnpj("123456780001")).toBe("12.345.678/0001");
+    expect(formatCnpj("12345678000190")).toBe("12.345.678/0001-90");
+  });
+
+  it("nunca ultrapassa 14 dígitos, mesmo digitando mais", () => {
+    expect(formatCnpj("123456780001909999")).toBe("12.345.678/0001-90");
+  });
+
+  it("ignora caracteres não numéricos digitados no meio", () => {
+    expect(formatCnpj("12.345.678/0001-90")).toBe("12.345.678/0001-90");
+    expect(formatCnpj("abc12345678000190xyz")).toBe("12.345.678/0001-90");
+  });
+
+  it("lida com valor vazio ou nulo sem quebrar", () => {
+    expect(formatCnpj("")).toBe("");
+    expect(formatCnpj(null)).toBe("");
+    expect(formatCnpj(undefined)).toBe("");
   });
 });

@@ -5,6 +5,10 @@ import { AlertTriangle, Boxes, Building2, Mail, Phone } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as companyService from "../services/companyService";
+import { formatCnpj } from "../utils/formatters";
+import CharCounter from "../components/ui/CharCounter";
+
+const FIELD_LIMITS = { name: 200, segment: 100, phone: 20, address: 300 };
 
 const EMPTY_FORM = {
   name: "",
@@ -34,8 +38,12 @@ export default function OnboardingPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.notificationEmail.trim() || !form.initials.trim()) {
-      setError("Preencha nome da empresa, e-mail de notificações e a sigla.");
+    if (!form.name.trim() || !form.notificationEmail.trim() || !form.initials.trim() || !form.cnpj.trim()) {
+      setError("Preencha nome da empresa, e-mail de notificações, sigla e CNPJ.");
+      return;
+    }
+    if (form.cnpj.replace(/\D/g, "").length !== 14) {
+      setError("O CNPJ precisa ter os 14 dígitos completos.");
       return;
     }
     setError("");
@@ -75,14 +83,16 @@ export default function OnboardingPage() {
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Nome da empresa</label>
               <div className="relative">
                 <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Empório Boa Safra" className={inputCls} />
+                <input value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={FIELD_LIMITS.name} placeholder="Ex: Empório Boa Safra" className={inputCls} />
               </div>
+              <CharCounter value={form.name} max={FIELD_LIMITS.name} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Segmento</label>
-                <input value={form.segment} onChange={(e) => set("segment", e.target.value)} placeholder="Ex: Atacado & Varejo" className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" />
+                <input value={form.segment} onChange={(e) => set("segment", e.target.value)} maxLength={FIELD_LIMITS.segment} placeholder="Ex: Atacado & Varejo" className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" />
+                <CharCounter value={form.segment} max={FIELD_LIMITS.segment} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Sigla (até 3 letras)</label>
@@ -104,18 +114,26 @@ export default function OnboardingPage() {
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Telefone</label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(00) 00000-0000" className={inputCls} />
+                  <input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={FIELD_LIMITS.phone} placeholder="(00) 00000-0000" className={inputCls} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">CNPJ</label>
-                <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} placeholder="00.000.000/0000-00" className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" />
+                <input
+                  value={form.cnpj}
+                  onChange={(e) => set("cnpj", formatCnpj(e.target.value))}
+                  inputMode="numeric"
+                  maxLength={18}
+                  placeholder="00.000.000/0000-00"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Endereço</label>
-              <input value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Rua, número — cidade, UF" className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" />
+              <input value={form.address} onChange={(e) => set("address", e.target.value)} maxLength={FIELD_LIMITS.address} placeholder="Rua, número — cidade, UF" className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" />
+              <CharCounter value={form.address} max={FIELD_LIMITS.address} />
             </div>
 
             {error && (

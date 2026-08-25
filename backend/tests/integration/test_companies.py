@@ -10,6 +10,7 @@ COMPANY_PAYLOAD = {
     "name": "Empório Boa Safra",
     "notification_email": "estoque@empresa.com",
     "initials": "EB",
+    "cnpj": "12.345.678/0001-90",
 }
 
 
@@ -62,6 +63,65 @@ def test_criar_empresa_com_payload_incompleto_retorna_422(make_test_client, fake
     response = client.post("/companies", json={"name": "Empório Boa Safra"})
 
     assert response.status_code == 422
+
+
+def test_criar_empresa_sem_cnpj_retorna_422(make_test_client, fake_client, make_authed_user):
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    payload = {k: v for k, v in COMPANY_PAYLOAD.items() if k != "cnpj"}
+    response = client.post("/companies", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_criar_empresa_com_cnpj_incompleto_retorna_422(make_test_client, fake_client, make_authed_user):
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "123.456"})
+
+    assert response.status_code == 422
+
+
+def test_criar_empresa_aceita_cnpj_sem_pontuacao(monkeypatch, make_test_client, fake_client, make_authed_user):
+    fake_client.tables["profiles"] = [{"id": "user-1", "company_id": None, "role": None}]
+    monkeypatch.setattr(companies_router, "service_client", lambda: fake_client)
+
+    user = make_authed_user(fake_client, company_id=None, user_id="user-1")
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "12345678000190"})
+
+    assert response.status_code == 201
+
+
+def test_criar_empresa_com_cnpj_duplicado_retorna_409(monkeypatch, make_test_client, fake_client, make_authed_user):
+    # Simula o erro que o Postgres devolveria de verdade ao violar a
+    # constraint unique(cnpj) — sem depender do FakeQuery simular isso
+    # sozinho (ele não reproduz constraints do banco).
+    class _RaisingCompaniesTable:
+        def insert(self, _payload):
+            return self
+
+        def execute(self):
+            raise Exception('duplicate key value violates unique constraint "companies_cnpj_key"')
+
+    class _RaisingServiceClient:
+        def table(self, name):
+            if name == "companies":
+                return _RaisingCompaniesTable()
+            return fake_client.table(name)
+
+    monkeypatch.setattr(companies_router, "service_client", lambda: _RaisingServiceClient())
+
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json=COMPANY_PAYLOAD)
+
+    assert response.status_code == 409
+    assert "CNPJ" in response.json()["detail"]
 
 
 def test_get_my_company_retorna_dados_da_empresa(make_test_client, fake_client, make_authed_user):
