@@ -35,9 +35,13 @@ export async function login(email, password) {
   return { id: "demo-user", email };
 }
 
-export async function logout() {
+// scope "local" (padrão) desloga só esta aba/sessão. scope "global" revoga
+// a sessão em TODOS os dispositivos/abas logados com essa conta — é o que
+// usamos depois de trocar a senha, pra nenhuma aba antiga continuar
+// "logada" com a senha velha.
+export async function logout(scope = "local") {
   if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope });
     if (error) throw error;
   }
   return true;
@@ -45,7 +49,23 @@ export async function logout() {
 
 export async function requestPasswordReset(email) {
   if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    if (error) throw error;
+    return true;
+  }
+  await new Promise((r) => setTimeout(r, 300));
+  return true;
+}
+
+// Chamada pela tela que o link do e-mail abre (/redefinir-senha). Nesse
+// ponto o usuário já tem uma sessão de recuperação válida (o supabase-js
+// processa o token da URL sozinho ao carregar a página), então só falta
+// definir a senha nova de fato.
+export async function updatePassword(newPassword) {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
     return true;
   }

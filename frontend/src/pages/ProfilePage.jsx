@@ -5,6 +5,7 @@ import { useCompany } from "../context/CompanyContext";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import CharCounter from "../components/ui/CharCounter";
+import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
 
 const FIELD_LIMITS = { name: 200, phone: 20, address: 300 };
 
@@ -13,7 +14,7 @@ export default function ProfilePage() {
   const { company, saveCompany } = useCompany();
   const { addToast } = useToast();
   const [form, setForm] = useState(null);
-  const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
+  const [pw, setPw] = useState({ current: "" });
   const [pwErr, setPwErr] = useState("");
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
@@ -38,16 +39,12 @@ export default function ProfilePage() {
   const handleSavePassword = async (e) => {
     e.preventDefault();
     if (pwSubmitting) return; // evita clique duplo disparando 2 pedidos seguidos
-    if (!pw.current || !pw.next || !pw.confirm) {
-      setPwErr("Preencha todos os campos de senha.");
+    if (!pw.current) {
+      setPwErr("Informe sua senha atual.");
       return;
     }
-    if (pw.next.length < 8) {
-      setPwErr("A nova senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (pw.next !== pw.confirm) {
-      setPwErr("A confirmação não coincide com a nova senha.");
+    if (pw.current.length < MIN_PASSWORD_LENGTH) {
+      setPwErr(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
       return;
     }
     setPwErr("");
@@ -59,8 +56,8 @@ export default function ProfilePage() {
         return;
       }
       await authService.requestPasswordReset(user.email);
-      setPw({ current: "", next: "", confirm: "" });
-      addToast(`Enviamos um e-mail de confirmação para ${user.email} pra concluir a troca de senha.`);
+      setPw({ current: "" });
+      addToast(`Enviamos um link de troca de senha para ${user.email}.`);
     } catch (err) {
       addToast(err.message || "Não foi possível iniciar a troca de senha.", "error");
     } finally {
@@ -139,23 +136,15 @@ export default function ProfilePage() {
         <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
           <p className="text-xs text-amber-800 leading-relaxed">
-            Por segurança, a alteração de senha só será concluída após a confirmação enviada para o seu e-mail cadastrado.
+            Confirme sua senha atual e enviaremos um link para o seu e-mail cadastrado — é lá que você define a
+            senha nova.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Senha atual</label>
-            <input type="password" value={pw.current} onChange={(e) => setPw((s) => ({ ...s, current: e.target.value }))} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" placeholder="••••••••" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Nova senha</label>
-            <input type="password" value={pw.next} onChange={(e) => setPw((s) => ({ ...s, next: e.target.value }))} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" placeholder="Mín. 8 caracteres" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Confirmar nova senha</label>
-            <input type="password" value={pw.confirm} onChange={(e) => setPw((s) => ({ ...s, confirm: e.target.value }))} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" placeholder="••••••••" />
-          </div>
+        <div className="max-w-xs">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">Senha atual</label>
+          <input type="password" value={pw.current} onChange={(e) => setPw({ current: e.target.value })} className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500" placeholder="••••••••" />
+          <PasswordRequirementHint value={pw.current} />
         </div>
 
         {pwErr && (
@@ -171,7 +160,7 @@ export default function ProfilePage() {
             disabled={pwSubmitting}
             className="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition"
           >
-            {pwSubmitting ? "Enviando..." : "Alterar senha"}
+            {pwSubmitting ? "Enviando..." : "Enviar link de troca de senha"}
           </button>
         </div>
       </form>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/LoginPage";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
 import OnboardingPage from "../pages/OnboardingPage";
 import DashboardPage from "../pages/DashboardPage";
 import StockPage from "../pages/StockPage";
@@ -29,6 +30,11 @@ export default function AppRoutes() {
           )
         }
       />
+
+      {/* Fica fora do PrivateRoute de propósito: o link do e-mail cria uma
+         sessão de recuperação temporária, diferente do login normal — não
+         faz sentido essa rota exigir "já estar logado" antes. */}
+      <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
 
       <Route element={<PrivateRoute />}>
         {/* /onboarding fica fora do RequireCompany de propósito — é
