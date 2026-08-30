@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Bell, Menu } from "lucide-react";
+import CompanyLogo from "../ui/CompanyLogo";
 
 export default function TopHeader({ title, subtitle, onMenuClick, company, alertCount = 0 }) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center gap-4 px-4 sm:px-6">
+    <header className="h-16 shrink-0 bg-slate-100 border-b border-slate-200/60 flex items-center gap-4 px-4 sm:px-6">
       <button className="lg:hidden text-slate-500" onClick={onMenuClick}>
         <Menu size={22} />
       </button>
@@ -17,7 +18,7 @@ export default function TopHeader({ title, subtitle, onMenuClick, company, alert
       <div className="ml-auto flex items-center gap-3 relative">
         <button
           onClick={() => setNotifOpen((o) => !o)}
-          className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-600"
+          className="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-200/60 text-slate-600 transition"
         >
           <Bell size={19} />
           {alertCount > 0 && (
@@ -38,9 +39,7 @@ export default function TopHeader({ title, subtitle, onMenuClick, company, alert
         )}
         {company && (
           <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-slate-200">
-            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-              {company.initials}
-            </div>
+            <CompanyLogo company={company} size="sm" bgClass="bg-navy" />
             <span className="text-sm font-medium text-slate-700 max-w-[140px] truncate">{company.name}</span>
           </div>
         )}

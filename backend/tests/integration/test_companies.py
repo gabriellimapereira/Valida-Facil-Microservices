@@ -10,6 +10,7 @@ COMPANY_PAYLOAD = {
     "name": "Empório Boa Safra",
     "notification_email": "estoque@empresa.com",
     "initials": "EB",
+    "phone": "(89) 3222-4455",
     "cnpj": "12.345.678/0001-90",
 }
 
@@ -82,6 +83,37 @@ def test_criar_empresa_com_cnpj_incompleto_retorna_422(make_test_client, fake_cl
     response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "123.456"})
 
     assert response.status_code == 422
+
+
+def test_criar_empresa_sem_telefone_retorna_422(make_test_client, fake_client, make_authed_user):
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    payload = {k: v for k, v in COMPANY_PAYLOAD.items() if k != "phone"}
+    response = client.post("/companies", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_criar_empresa_com_telefone_incompleto_retorna_422(make_test_client, fake_client, make_authed_user):
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "phone": "8932224"})
+
+    assert response.status_code == 422
+
+
+def test_criar_empresa_aceita_telefone_celular_11_digitos(monkeypatch, make_test_client, fake_client, make_authed_user):
+    fake_client.tables["profiles"] = [{"id": "user-1", "company_id": None, "role": None}]
+    monkeypatch.setattr(companies_router, "service_client", lambda: fake_client)
+
+    user = make_authed_user(fake_client, company_id=None, user_id="user-1")
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "phone": "(89) 98765-4321"})
+
+    assert response.status_code == 201
 
 
 def test_criar_empresa_aceita_cnpj_sem_pontuacao(monkeypatch, make_test_client, fake_client, make_authed_user):

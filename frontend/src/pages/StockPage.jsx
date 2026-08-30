@@ -7,6 +7,7 @@ import ProductModal from "../components/products/ProductModal";
 import ConfirmDeleteModal from "../components/products/ConfirmDeleteModal";
 import MovementModal from "../components/products/MovementModal";
 import ReportModal from "../components/products/ReportModal";
+import TactileButton from "../components/ui/TactileButton";
 import { useProducts } from "../context/ProductContext";
 import { useToast } from "../context/ToastContext";
 import * as movementService from "../services/movementService";
@@ -118,8 +119,8 @@ export default function StockPage() {
 
   const handleGenerateReport = async (params) => {
     const { url, filename } = await reportService.generateReport(params);
-    window.open(url, "_blank", "noopener,noreferrer");
-    addToast(`Relatório "${filename}" gerado. O link expira em alguns minutos.`);
+    await reportService.downloadFile(url, filename);
+    addToast(`Relatório "${filename}" baixado com sucesso.`);
   };
 
   return (
@@ -129,21 +130,29 @@ export default function StockPage() {
           <h2 className="text-xl font-bold text-slate-900">Gestão de estoque</h2>
           <p className="text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <button
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <TactileButton
+            variant="secondary"
             onClick={() => setReportModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition"
+            padding="9px 16px"
+            rounded={12}
           >
-            <FileDown size={17} />
-            Gerar relatório
-          </button>
-          <button
+            <div className="flex items-center gap-2">
+              <FileDown size={17} />
+              <span>Gerar relatório</span>
+            </div>
+          </TactileButton>
+          <TactileButton
+            variant="amber"
             onClick={() => { setEditing(null); setModalOpen(true); }}
-            className="inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-amber-600/20"
+            padding="9px 16px"
+            rounded={12}
           >
-            <Plus size={17} />
-            Novo produto
-          </button>
+            <div className="flex items-center gap-2">
+              <Plus size={17} />
+              <span>Novo produto</span>
+            </div>
+          </TactileButton>
         </div>
       </div>
 

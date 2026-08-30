@@ -4,8 +4,8 @@ import { MOCK_COMPANY } from "../data/mockData";
 
 let memoryCompany = { ...MOCK_COMPANY };
 
-// O banco usa snake_case (notification_email), o front usa camelCase
-// (notificationEmail) — isso mantém a "tradução" isolada aqui, então
+// O banco usa snake_case (notification_email, logo_url), o front usa camelCase
+// (notificationEmail, logoUrl) — isso mantém a "tradução" isolada aqui, então
 // nenhum componente precisa saber como a coluna se chama no Postgres.
 function fromDb(row) {
   if (!row) return null;
@@ -19,6 +19,7 @@ function fromDb(row) {
     cnpj: row.cnpj,
     address: row.address,
     initials: row.initials,
+    logoUrl: row.logo_url || null,
   };
 }
 
@@ -31,6 +32,7 @@ const FIELD_TO_COLUMN = {
   cnpj: "cnpj",
   address: "address",
   initials: "initials",
+  logoUrl: "logo_url",
 };
 
 function toDb(fields) {
@@ -82,4 +84,52 @@ export async function updateCompany(companyId, changes) {
 
   if (error) throw error;
   return fromDb(data);
+}
+
+const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+
+export async function uploadCompanyLogo(companyId, file) {
+  if (!file) throw new Error("Nenhum arquivo selecionado.");
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("Formato inválido. Por favor, envie uma imagem PNG, JPG, WebP ou SVG.");
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("A imagem deve ter no máximo 3MB.");
+  }
+
+  if (!isSupabaseConfigured) {
+    const localUrl = URL.createObjectURL(file);
+    memoryCompany = { ...memoryCompany, logoUrl: localUrl };
+    return { ...memoryCompany };
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const path = `${companyId}/logo_${Date.now()}.${ext}`;
+
+  // 1. Upload da imagem para o bucket "logos"
+  const { error: uploadError } = await supabase.storage
+    .from("logos")
+    .upload(path, file, {
+      upsert: true,
+      contentType: file.type,
+      cacheControl: "3600",
+    });
+
+  if (uploadError) throw new Error(`Falha ao fazer upload da imagem: ${uploadError.message}`);
+
+  // 2. Obter a URL pública permanente
+  const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path);
+  const publicUrl = urlData?.publicUrl;
+
+  if (!publicUrl) throw new Error("Não foi possível gerar a URL pública da imagem.");
+
+  // 3. Atualizar o registro da empresa no banco
+  return updateCompany(companyId, { logoUrl: publicUrl });
+}
+
+export async function removeCompanyLogo(companyId) {
+  return updateCompany(companyId, { logoUrl: null });
 }

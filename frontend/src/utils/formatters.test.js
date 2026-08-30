@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { brl, fmtDate, daysUntil, expiryUrgency, isLowStock, catInfo, formatCnpj } from "./formatters";
+import { brl, fmtDate, daysUntil, expiryUrgency, isLowStock, catInfo, formatCnpj, isValidCnpj, formatPhone } from "./formatters";
 
 describe("brl", () => {
   // O Intl do Node formata moeda pt-BR com um espaço "não-quebrável"
@@ -134,5 +134,60 @@ describe("formatCnpj", () => {
     expect(formatCnpj("")).toBe("");
     expect(formatCnpj(null)).toBe("");
     expect(formatCnpj(undefined)).toBe("");
+  });
+});
+
+describe("isValidCnpj", () => {
+  it("aceita CNPJs matematicamente válidos (dígitos verificadores corretos)", () => {
+    expect(isValidCnpj("11.222.333/0001-81")).toBe(true);
+    expect(isValidCnpj("11.444.777/0001-61")).toBe(true);
+    expect(isValidCnpj("11222333000181")).toBe(true); // sem pontuação também funciona
+  });
+
+  it("rejeita CNPJ com dígitos verificadores errados", () => {
+    expect(isValidCnpj("11.222.333/0001-82")).toBe(false); // último dígito trocado
+    expect(isValidCnpj("12.345.678/0001-90")).toBe(false); // sequência aleatória
+  });
+
+  it("rejeita CNPJ com todos os dígitos iguais", () => {
+    expect(isValidCnpj("11.111.111/1111-11")).toBe(false);
+    expect(isValidCnpj("00.000.000/0000-00")).toBe(false);
+  });
+
+  it("rejeita quando não tem 14 dígitos", () => {
+    expect(isValidCnpj("11.222.333/0001-8")).toBe(false);
+    expect(isValidCnpj("")).toBe(false);
+    expect(isValidCnpj(null)).toBe(false);
+    expect(isValidCnpj(undefined)).toBe(false);
+  });
+});
+
+describe("formatPhone", () => {
+  it("aplica a máscara progressivamente conforme digita", () => {
+    expect(formatPhone("8")).toBe("(8");
+    expect(formatPhone("89")).toBe("(89");
+    expect(formatPhone("8932")).toBe("(89) 32");
+  });
+
+  it("formata como telefone fixo com 10 dígitos", () => {
+    expect(formatPhone("8932224455")).toBe("(89) 3222-4455");
+  });
+
+  it("formata como celular com 11 dígitos", () => {
+    expect(formatPhone("89987654321")).toBe("(89) 98765-4321");
+  });
+
+  it("nunca ultrapassa 11 dígitos, mesmo digitando mais", () => {
+    expect(formatPhone("899876543219999")).toBe("(89) 98765-4321");
+  });
+
+  it("ignora caracteres não numéricos", () => {
+    expect(formatPhone("(89) 98765-4321")).toBe("(89) 98765-4321");
+  });
+
+  it("lida com valor vazio ou nulo sem quebrar", () => {
+    expect(formatPhone("")).toBe("");
+    expect(formatPhone(null)).toBe("");
+    expect(formatPhone(undefined)).toBe("");
   });
 });

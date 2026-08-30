@@ -1,19 +1,92 @@
 {% extends "reports/base.html" %}
 {% block content %}
-<div class="summary">
-  <div class="summary-card"><div class="label">Produtos analisados</div><div class="value">{{ total_products }}</div></div>
-  <div class="summary-card"><div class="label">Unidades movimentadas</div><div class="value">{{ total_units }}</div></div>
+
+<!-- Cartões de Resumo de Giro de Estoque -->
+<table class="summary-table-container">
+  <tr>
+    <!-- Resumo Geral -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Resumo de Rotatividade</div>
+      <div class="summary-card-body">
+        <table class="summary-data-table">
+          <tr>
+            <td class="label">Produtos com Movimentação:</td>
+            <td class="value">{{ total_products }}</td>
+          </tr>
+          <tr>
+            <td class="label">Total de Unidades Expedidas:</td>
+            <td class="value">{{ total_units_fmt }}</td>
+          </tr>
+          <tr>
+            <td class="label">Média por Item Movimentado:</td>
+            <td class="value">{{ avg_units_per_product }} un.</td>
+          </tr>
+          <tr>
+            <td class="label">Item com Maior Saída:</td>
+            <td class="value" style="font-size: 7.2pt; color: #0F766E;">
+              {{ top_product_name }}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </td>
+
+    <!-- Destaque Volume -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Volume de Saídas</div>
+      <div class="summary-card-body">
+        <div class="highlight-metric-box">
+          <div class="highlight-metric-label">Total Expedido no Período</div>
+          <div class="highlight-metric-value">{{ total_units_fmt }}</div>
+          <div style="font-size: 7pt; color: #64748B; margin-top: 4px;">
+            Unidades físicas que saíram do estoque
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- Detalhamento do Giro de Estoque -->
+<div class="section-container">
+  <div class="section-header">Curva de Rotatividade de Produtos (Ranking de Saídas)</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="center" style="width: 8%;">Posição</th>
+        <th class="center" style="width: 14%;">Código</th>
+        <th style="width: 48%;">Descrição do Produto</th>
+        <th class="right" style="width: 15%;">Saídas (Un.)</th>
+        <th class="right" style="width: 15%;">Participação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in ranking %}
+      <tr>
+        <td class="center" style="font-weight: bold; color: #475569;">#{{ loop.index }}</td>
+        <td class="center" style="font-family: monospace; font-weight: 600; color: #334155;">{{ p.code }}</td>
+        <td><strong>{{ p.name }}</strong></td>
+        <td class="right" style="font-weight: 700; color: #0F172A;">{{ p.total_out_fmt }}</td>
+        <td class="right" style="color: #475569;">{{ p.share_pct }}%</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="center" style="padding: 16px; color: #64748B;">
+          Nenhuma saída registrada para os produtos no período selecionado.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if ranking %}
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="3" style="text-align: right; text-transform: uppercase; letter-spacing: 0.04em;">Total Geral de Saídas:</td>
+        <td class="right">{{ total_units_fmt }}</td>
+        <td class="right">100.0%</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
 </div>
 
-<table>
-  <tr><th>#</th><th>Produto</th><th>Código</th><th>Saídas no período</th></tr>
-  {% for p in ranking %}
-  <tr>
-    <td>{{ loop.index }}</td>
-    <td>{{ p.name }}</td>
-    <td>{{ p.code }}</td>
-    <td>{{ p.total_out }}</td>
-  </tr>
-  {% endfor %}
-</table>
 {% endblock %}

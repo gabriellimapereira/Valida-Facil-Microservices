@@ -14,3 +14,31 @@ export async function generateReport({ reportType, format = "pdf", dateFrom, dat
 
   return { url: result.url, filename: result.filename, expiresInSeconds: result.expires_in_seconds };
 }
+
+/**
+ * Executa o download direto do arquivo no navegador sem redirecionamento de tela
+ */
+export async function downloadFile(url, filename) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Erro na resposta do servidor");
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+  } catch (err) {
+    // Fallback caso ocorra restrição de fetch direto
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_self";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+}

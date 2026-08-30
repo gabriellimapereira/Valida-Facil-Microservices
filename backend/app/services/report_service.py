@@ -8,6 +8,7 @@ arquivo só formata, agrega e transforma em arquivo.
 """
 from datetime import date, datetime, timedelta
 from io import BytesIO
+from typing import Any
 
 import pandas as pd
 from supabase import Client
@@ -27,10 +28,23 @@ def _brl(value: float) -> str:
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def _fmt_qty(qty: int | float) -> str:
+    if isinstance(qty, int) or qty.is_integer():
+        return f"{int(qty):,}".replace(",", ".")
+    return f"{qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _fmt_date(iso: str | None) -> str:
     if not iso:
         return "—"
     return datetime.fromisoformat(iso[:10]).strftime("%d/%m/%Y")
+
+
+def _fmt_datetime(iso: str | None) -> str:
+    if not iso:
+        return "—"
+    dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return dt.strftime("%d/%m/%Y %H:%M")
 
 
 # --------------------------------------------------------------------- #
@@ -60,57 +74,109 @@ def _build_stock_snapshot(client: Client, company_name: str) -> tuple[pd.DataFra
     products = _fetch_products(client)
     rows = []
     for p in products:
-        total = p["price"] * p["quantity"]
+        price = float(p.get("price") or 0)
+        qty = int(p.get("quantity") or 0)
+        min_stock = int(p.get("min_stock") or 0)
+        total = price * qty
+        low_stock = qty <= min_stock
         rows.append({
-            "name": p["name"], "code": p["code"],
-            "category_label": CATEGORY_LABELS.get(p["category"], p["category"]),
-            "quantity": p["quantity"], "low_stock": p["quantity"] <= p["min_stock"],
-            "price_fmt": _brl(p["price"]), "total_fmt": _brl(total),
+            "name": p.get("name") or "—",
+            "code": p.get("code") or "—",
+            "category_label": CATEGORY_LABELS.get(p.get("category", ""), p.get("category", "")),
+            "quantity": qty,
+            "quantity_fmt": _fmt_qty(qty),
+            "min_stock": min_stock,
+            "low_stock": low_stock,
+            "price": price,
+            "price_fmt": _brl(price),
+            "total": total,
+            "total_fmt": _brl(total),
             "expiry_fmt": _fmt_date(p.get("expiry")),
-            "price": p["price"], "total": total,
         })
+
+    total_products = len(rows)
+    items_in_stock_count = sum(1 for r in rows if r["quantity"] > 0)
+    items_out_of_stock_count = sum(1 for r in rows if r["quantity"] == 0)
+    low_stock_count = sum(1 for r in rows if r["low_stock"])
+    total_quantity = sum(r["quantity"] for r in rows)
+    total_value_num = sum(r["total"] for r in rows)
+
     context = {
         "products": rows,
-        "total_products": len(rows),
-        "total_value": _brl(sum(r["total"] for r in rows)),
-        "low_stock_count": sum(1 for r in rows if r["low_stock"]),
+        "total_products": total_products,
+        "items_in_stock_count": items_in_stock_count,
+        "items_out_of_stock_count": items_out_of_stock_count,
+        "low_stock_count": low_stock_count,
+        "total_quantity": total_quantity,
+        "total_quantity_fmt": _fmt_qty(total_quantity),
+        "total_value": _brl(total_value_num),
         "title": "Relatório de Estoque Atual",
-        "subtitle": "Fotografia completa do estoque no momento da geração.",
+        "subtitle": f"Data de Referência: {datetime.now().strftime('%d/%m/%Y')}",
+        "filter_info": "Tipo de Estoque: Todos os itens cadastrados",
     }
+
     df = pd.DataFrame([{
-        "Produto": r["name"], "Código": r["code"], "Categoria": r["category_label"],
-        "Quantidade": r["quantity"], "Preço unitário (R$)": r["price"], "Valor total (R$)": r["total"],
+        "Produto": r["name"],
+        "Código": r["code"],
+        "Categoria": r["category_label"],
+        "Quantidade": r["quantity"],
+        "Preço unitário (R$)": r["price"],
+        "Valor total (R$)": r["total"],
         "Validade": r["expiry_fmt"],
     } for r in rows])
+
     return df, context
 
 
-def _build_movements(client: Client, company_name: str, date_from, date_to) -> tuple[pd.DataFrame, dict]:
+def _build_movements(client: Client, company_name: str, date_from: date | None, date_to: date | None) -> tuple[pd.DataFrame, dict]:
     movements = _fetch_movements(client, date_from, date_to)
     rows = []
     for m in movements:
         product = m.get("products") or {}
+        delta = int(m.get("quantity_delta") or 0)
         rows.append({
-            "date_fmt": datetime.fromisoformat(m["created_at"].replace("Z", "+00:00")).strftime("%d/%m/%Y %H:%M"),
-            "product_name": product.get("name", "—"), "product_code": product.get("code", "—"),
-            "movement_type": m["movement_type"],
-            "delta_fmt": f"{'+' if m['quantity_delta'] > 0 else ''}{m['quantity_delta']}",
+            "date_fmt": _fmt_datetime(m.get("created_at")),
+            "product_name": product.get("name", "—"),
+            "product_code": product.get("code", "—"),
+            "movement_type": m.get("movement_type", "ajuste"),
+            "delta_val": delta,
+            "delta_fmt": f"{'+' if delta > 0 else ''}{_fmt_qty(delta)}",
             "note": m.get("note"),
         })
-    period = ""
+
+    period_str = ""
     if date_from or date_to:
-        period = f"Período: {date_from.strftime('%d/%m/%Y') if date_from else '—'} até {date_to.strftime('%d/%m/%Y') if date_to else 'hoje'}"
+        d_from = date_from.strftime('%d/%m/%Y') if date_from else 'Início'
+        d_to = date_to.strftime('%d/%m/%Y') if date_to else 'Hoje'
+        period_str = f"Período: {d_from} até {d_to}"
+
+    total_in = sum(1 for r in rows if r["movement_type"] == "entrada")
+    total_out = sum(1 for r in rows if r["movement_type"] == "saida")
+    total_adjust = sum(1 for r in rows if r["movement_type"] == "ajuste")
+    net_units = sum(r["delta_val"] for r in rows)
+
     context = {
-        "movements": rows, "total_movements": len(rows),
-        "total_in": sum(1 for r in rows if r["movement_type"] == "entrada"),
-        "total_out": sum(1 for r in rows if r["movement_type"] == "saida"),
+        "movements": rows,
+        "total_movements": len(rows),
+        "total_in": total_in,
+        "total_out": total_out,
+        "total_adjust": total_adjust,
+        "net_units": net_units,
+        "net_units_fmt": f"{'+' if net_units > 0 else ''}{_fmt_qty(net_units)}",
         "title": "Relatório de Movimentações",
-        "subtitle": period or "Todo o histórico disponível.",
+        "subtitle": period_str or "Histórico completo de movimentações",
+        "filter_info": "Entradas, saídas e ajustes de estoque",
     }
+
     df = pd.DataFrame([{
-        "Data": r["date_fmt"], "Produto": r["product_name"], "Código": r["product_code"],
-        "Tipo": r["movement_type"], "Variação": r["delta_fmt"], "Observação": r["note"] or "",
+        "Data": r["date_fmt"],
+        "Produto": r["product_name"],
+        "Código": r["product_code"],
+        "Tipo": r["movement_type"],
+        "Variação": r["delta_fmt"],
+        "Observação": r["note"] or "",
     } for r in rows])
+
     return df, context
 
 
@@ -124,45 +190,102 @@ def _build_expiry(client: Client, company_name: str, window_days: int) -> tuple[
         expiry_date = date.fromisoformat(p["expiry"][:10])
         if expiry_date > cutoff:
             continue
+        price = float(p.get("price") or 0)
+        qty = int(p.get("quantity") or 0)
+        total = price * qty
+        days_left = max((expiry_date - date.today()).days, 0)
         rows.append({
-            "name": p["name"], "code": p["code"], "quantity": p["quantity"],
-            "expiry_fmt": _fmt_date(p["expiry"]),
-            "days_left": max((expiry_date - date.today()).days, 0),
+            "name": p.get("name") or "—",
+            "code": p.get("code") or "—",
+            "category_label": CATEGORY_LABELS.get(p.get("category", ""), p.get("category", "")),
+            "quantity": qty,
+            "quantity_fmt": _fmt_qty(qty),
+            "price": price,
+            "total": total,
+            "total_fmt": _brl(total),
+            "expiry_fmt": _fmt_date(p.get("expiry")),
+            "days_left": days_left,
         })
+
     rows.sort(key=lambda r: r["days_left"])
+
+    critical_count = sum(1 for r in rows if r["days_left"] <= 3)
+    warning_count = sum(1 for r in rows if 3 < r["days_left"] <= 7)
+    total_qty = sum(r["quantity"] for r in rows)
+    total_risk_val = sum(r["total"] for r in rows)
+
     context = {
-        "products": rows, "total": len(rows), "window_days": window_days,
+        "products": rows,
+        "total": len(rows),
+        "critical_count": critical_count,
+        "warning_count": warning_count,
+        "total_quantity": total_qty,
+        "total_quantity_fmt": _fmt_qty(total_qty),
+        "total_risk_value": _brl(total_risk_val),
+        "window_days": window_days,
         "title": "Relatório de Produtos a Vencer",
-        "subtitle": f"Produtos que vencem nos próximos {window_days} dias.",
+        "subtitle": f"Janela de Análise: Próximos {window_days} dias",
+        "filter_info": f"Itens perecíveis com validade até {cutoff.strftime('%d/%m/%Y')}",
     }
+
     df = pd.DataFrame([{
-        "Produto": r["name"], "Código": r["code"], "Quantidade": r["quantity"],
-        "Vencimento": r["expiry_fmt"], "Dias restantes": r["days_left"],
+        "Produto": r["name"],
+        "Código": r["code"],
+        "Quantidade": r["quantity"],
+        "Vencimento": r["expiry_fmt"],
+        "Dias restantes": r["days_left"],
     } for r in rows])
+
     return df, context
 
 
-def _build_turnover(client: Client, company_name: str, date_from, date_to) -> tuple[pd.DataFrame, dict]:
+def _build_turnover(client: Client, company_name: str, date_from: date | None, date_to: date | None) -> tuple[pd.DataFrame, dict]:
     movements = _fetch_movements(client, date_from, date_to)
     totals: dict[str, dict] = {}
     for m in movements:
-        if m["movement_type"] != "saida":
+        if m.get("movement_type") != "saida":
             continue
         product = m.get("products") or {}
-        key = m["product_id"]
-        entry = totals.setdefault(key, {"name": product.get("name", "—"), "code": product.get("code", "—"), "total_out": 0})
-        entry["total_out"] += abs(m["quantity_delta"])
+        key = m.get("product_id") or product.get("name")
+        entry = totals.setdefault(key, {
+            "name": product.get("name", "—"),
+            "code": product.get("code", "—"),
+            "total_out": 0,
+        })
+        entry["total_out"] += abs(int(m.get("quantity_delta") or 0))
 
     ranking = sorted(totals.values(), key=lambda r: r["total_out"], reverse=True)
+    total_units = sum(r["total_out"] for r in ranking)
+
+    for item in ranking:
+        item["total_out_fmt"] = _fmt_qty(item["total_out"])
+        item["share_pct"] = round((item["total_out"] / total_units * 100), 1) if total_units > 0 else 0.0
+
+    period_str = ""
+    if date_from or date_to:
+        d_from = date_from.strftime('%d/%m/%Y') if date_from else 'Início'
+        d_to = date_to.strftime('%d/%m/%Y') if date_to else 'Hoje'
+        period_str = f"Período: {d_from} até {d_to}"
+
     context = {
-        "ranking": ranking, "total_products": len(ranking),
-        "total_units": sum(r["total_out"] for r in ranking),
+        "ranking": ranking,
+        "total_products": len(ranking),
+        "total_units": total_units,
+        "total_units_fmt": _fmt_qty(total_units),
+        "avg_units_per_product": round(total_units / len(ranking), 1) if ranking else 0.0,
+        "top_product_name": ranking[0]["name"] if ranking else "—",
         "title": "Relatório de Giro de Estoque",
-        "subtitle": "Produtos com mais saídas no período — ajuda a identificar os itens de maior rotatividade.",
+        "subtitle": period_str or "Histórico consolidado de saídas",
+        "filter_info": "Curva de rotatividade e ranking de produtos",
     }
+
     df = pd.DataFrame([{
-        "Produto": r["name"], "Código": r["code"], "Total de saídas": r["total_out"],
+        "Produto": r["name"],
+        "Código": r["code"],
+        "Total de saídas": r["total_out"],
+        "Participação (%)": r["share_pct"],
     } for r in ranking])
+
     return df, context
 
 
@@ -176,8 +299,21 @@ BUILDERS = {
 # Ponto de entrada                                                       #
 # --------------------------------------------------------------------- #
 
-def generate_report(client: Client, company_name: str, request: ReportRequest) -> tuple[bytes, str, str]:
-    generated_at = datetime.now().strftime("%d/%m/%Y %H:%M")
+def generate_report(
+    client: Client,
+    company: str | dict[str, Any],
+    request: ReportRequest,
+) -> tuple[bytes, str, str]:
+    if isinstance(company, dict):
+        company_name = company.get("name") or "Empresa"
+        company_data = company
+        responsible_name = company.get("responsible_name") or "Responsável pelo Estoque"
+    else:
+        company_name = str(company)
+        company_data = {"name": company_name}
+        responsible_name = "Responsável pelo Estoque"
+
+    generated_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     if request.report_type == ReportType.stock_snapshot:
         df, ctx = _build_stock_snapshot(client, company_name)
@@ -194,7 +330,9 @@ def generate_report(client: Client, company_name: str, request: ReportRequest) -
     else:
         raise ValueError(f"Tipo de relatório desconhecido: {request.report_type}")
 
+    ctx["company"] = company_data
     ctx["company_name"] = company_name
+    ctx["responsible_name"] = responsible_name
     ctx["generated_at"] = generated_at
 
     slug = request.report_type.value
@@ -212,3 +350,4 @@ def generate_report(client: Client, company_name: str, request: ReportRequest) -
         filename = f"{slug}-{timestamp}.xlsx"
 
     return content, filename, CONTENT_TYPES[request.format]
+

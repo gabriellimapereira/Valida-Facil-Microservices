@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDownCircle, ArrowUpCircle, SlidersHorizontal, X } from "lucide-react";
+import TactileButton from "../ui/TactileButton";
 
 const TYPES = [
   { id: "entrada", label: "Entrada", icon: ArrowUpCircle, hint: "Quantidade recebida ou reposta" },
@@ -40,51 +42,58 @@ export default function MovementModal({ product, onClose, onSubmit }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
-            <h3 className="font-semibold text-slate-900">Registrar movimentação</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {product.name} · estoque atual: <span className="font-medium text-slate-700">{product.quantity}</span>
-            </p>
+            <h3 className="font-semibold text-slate-900">{product.name}</h3>
+            <p className="text-xs text-slate-500">Estoque atual: {product.quantity} un.</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {TYPES.map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                onClick={() => setType(t.id)}
-                className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition ${
-                  type === t.id
-                    ? "border-amber-500 bg-amber-50 text-amber-700"
-                    : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                }`}
-              >
-                <t.icon size={18} />
-                {t.label}
-              </button>
-            ))}
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-2">Tipo de movimentação</label>
+            <div className="grid grid-cols-3 gap-2">
+              {TYPES.map((t) => {
+                const Icon = t.icon;
+                const isSelected = type === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setType(t.id)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition ${
+                      isSelected
+                        ? "border-amber-500 bg-amber-50/60 text-amber-700 font-semibold"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">{TYPES.find((t) => t.id === type)?.hint}</p>
           </div>
-          <p className="text-xs text-slate-400 -mt-2">{TYPES.find((t) => t.id === type)?.hint}</p>
 
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              {type === "ajuste" ? "Variação (negativo para reduzir)" : "Quantidade"}
+              {type === "ajuste" ? "Quantidade do ajuste (+ ou -)" : "Quantidade"}
             </label>
             <input
               type="number"
+              min={type === "ajuste" ? undefined : "1"}
+              step="1"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={type === "ajuste" ? "Ex: -3 ou 5" : "Ex: 10"}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+              placeholder={type === "ajuste" ? "Ex: -3 ou 5" : "0"}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
             />
           </div>
 
@@ -93,8 +102,8 @@ export default function MovementModal({ product, onClose, onSubmit }) {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ex: Venda balcão, nota fiscal 123"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+              placeholder="Ex: Reposição de estoque, venda balcão..."
+              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
             />
           </div>
 
@@ -105,23 +114,30 @@ export default function MovementModal({ product, onClose, onSubmit }) {
           )}
 
           <div className="flex items-center gap-3 pt-1">
-            <button
-              type="button"
+            <TactileButton
+              variant="secondary"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition"
+              className="flex-1"
+              padding="10px 16px"
+              rounded={12}
             >
               Cancelar
-            </button>
-            <button
+            </TactileButton>
+            <TactileButton
               type="submit"
+              variant="amber"
               disabled={submitting}
-              className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-sm font-semibold transition"
+              className="flex-1"
+              padding="10px 16px"
+              rounded={12}
             >
               {submitting ? "Registrando..." : "Registrar"}
-            </button>
+            </TactileButton>
           </div>
         </form>
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }

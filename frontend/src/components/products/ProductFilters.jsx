@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { CATEGORIES } from "../../data/categories";
+import DatePicker from "../ui/DatePicker";
 
 export default function ProductFilters({ filters, setFilters, filtersOpen, setFiltersOpen, activeFilterCount, clearFilters }) {
   const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
@@ -18,8 +19,9 @@ export default function ProductFilters({ filters, setFilters, filtersOpen, setFi
           />
         </div>
         <button
+          type="button"
           onClick={() => setFiltersOpen((o) => !o)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition relative"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition relative select-none"
         >
           <SlidersHorizontal size={16} />
           Filtros avançados
@@ -43,11 +45,11 @@ export default function ProductFilters({ filters, setFilters, filtersOpen, setFi
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Validade – de</label>
-            <input type="date" value={filters.dateFrom} onChange={(e) => set("dateFrom", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+            <DatePicker value={filters.dateFrom} onChange={(e) => set("dateFrom", e.target.value)} placeholder="De dd/mm/aaaa" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Validade – até</label>
-            <input type="date" value={filters.dateTo} onChange={(e) => set("dateTo", e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+            <DatePicker value={filters.dateTo} onChange={(e) => set("dateTo", e.target.value)} placeholder="Até dd/mm/aaaa" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Ordenar por preço</label>
@@ -58,7 +60,7 @@ export default function ProductFilters({ filters, setFilters, filtersOpen, setFi
             </select>
           </div>
           {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className="xl:col-span-4 text-xs font-semibold text-teal-600 hover:text-teal-700 text-left">
+            <button type="button" onClick={clearFilters} className="xl:col-span-4 text-xs font-semibold text-teal-600 hover:text-teal-700 text-left">
               Limpar filtros
             </button>
           )}

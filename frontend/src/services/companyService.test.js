@@ -1,9 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockFrom = vi.fn();
+const mockUpload = vi.fn();
+const mockGetPublicUrl = vi.fn();
+const mockStorageFrom = vi.fn(() => ({
+  upload: mockUpload,
+  getPublicUrl: mockGetPublicUrl,
+}));
+
 vi.mock("../lib/supabaseClient", () => ({
   isSupabaseConfigured: true,
-  supabase: { from: (...args) => mockFrom(...args) },
+  supabase: {
+    from: (...args) => mockFrom(...args),
+    storage: {
+      from: (...args) => mockStorageFrom(...args),
+    },
+  },
 }));
 
 const mockApiPost = vi.fn();
@@ -11,7 +23,7 @@ vi.mock("../lib/apiClient", () => ({
   apiClient: { post: (...args) => mockApiPost(...args) },
 }));
 
-import { fetchCompany, updateCompany, createCompany } from "./companyService";
+import { fetchCompany, updateCompany, createCompany, uploadCompanyLogo, removeCompanyLogo } from "./companyService";
 
 function makeChain(result) {
   const chain = {};
@@ -25,10 +37,13 @@ function makeChain(result) {
 beforeEach(() => {
   mockFrom.mockReset();
   mockApiPost.mockReset();
+  mockUpload.mockReset();
+  mockGetPublicUrl.mockReset();
+  mockStorageFrom.mockClear();
 });
 
 describe("fetchCompany", () => {
-  it("mapeia notification_email -> notificationEmail", async () => {
+  it("mapeia notification_email -> notificationEmail e logo_url -> logoUrl", async () => {
     mockFrom.mockReturnValue(
       makeChain({
         data: {
@@ -41,6 +56,7 @@ describe("fetchCompany", () => {
           cnpj: "12.345.678/0001-90",
           address: "Rua X, 100",
           initials: "EB",
+          logo_url: "https://supabase.co/storage/v1/object/public/logos/c1/logo.png",
         },
         error: null,
       })
@@ -50,6 +66,7 @@ describe("fetchCompany", () => {
 
     expect(result.notificationEmail).toBe("estoque@empresa.com");
     expect(result.name).toBe("Empório Boa Safra");
+    expect(result.logoUrl).toBe("https://supabase.co/storage/v1/object/public/logos/c1/logo.png");
   });
 
   it("retorna null sem companyId, sem consultar o Supabase", async () => {
@@ -67,18 +84,28 @@ describe("fetchCompany", () => {
 });
 
 describe("updateCompany", () => {
-  it("converte notificationEmail -> notification_email no payload e mapeia de volta a resposta", async () => {
+  it("converte notificationEmail -> notification_email e logoUrl -> logo_url no payload", async () => {
     mockFrom.mockReturnValue(
       makeChain({
-        data: { id: "company-1", name: "Novo Nome", notification_email: "novo@empresa.com" },
+        data: {
+          id: "company-1",
+          name: "Novo Nome",
+          notification_email: "novo@empresa.com",
+          logo_url: "https://url.com/logo.png",
+        },
         error: null,
       })
     );
 
-    const result = await updateCompany("company-1", { name: "Novo Nome", notificationEmail: "novo@empresa.com" });
+    const result = await updateCompany("company-1", {
+      name: "Novo Nome",
+      notificationEmail: "novo@empresa.com",
+      logoUrl: "https://url.com/logo.png",
+    });
 
     expect(result.notificationEmail).toBe("novo@empresa.com");
     expect(result.name).toBe("Novo Nome");
+    expect(result.logoUrl).toBe("https://url.com/logo.png");
   });
 
   it("ignora chaves que não existem no mapeamento (evita enviar lixo pro banco)", async () => {
@@ -86,10 +113,53 @@ describe("updateCompany", () => {
 
     await updateCompany("company-1", { name: "X", campoQueNaoExiste: "deveria sumir" });
 
-    // O teste em si não falha se o campo desconhecido vazar — a garantia
-    // real está em toDb() só copiar chaves presentes em FIELD_TO_COLUMN;
-    // aqui só confirmamos que a chamada não quebra com entrada extra.
     expect(mockFrom).toHaveBeenCalledWith("companies");
+  });
+});
+
+describe("uploadCompanyLogo", () => {
+  it("bloqueia formato de arquivo não suportado", async () => {
+    const invalidFile = new File(["dummy"], "teste.exe", { type: "application/x-msdownload" });
+    await expect(uploadCompanyLogo("company-1", invalidFile)).rejects.toThrow("Formato inválido");
+  });
+
+  it("bloqueia arquivo maior que 3MB", async () => {
+    const bigFile = new File([new ArrayBuffer(4 * 1024 * 1024)], "foto.png", { type: "image/png" });
+    await expect(uploadCompanyLogo("company-1", bigFile)).rejects.toThrow("máximo 3MB");
+  });
+
+  it("faz upload no bucket logos e atualiza a empresa", async () => {
+    const file = new File(["dummy"], "minha-logo.png", { type: "image/png" });
+    mockUpload.mockResolvedValue({ data: { path: "company-1/logo.png" }, error: null });
+    mockGetPublicUrl.mockReturnValue({ data: { publicUrl: "https://storage.fake/logos/company-1/logo.png" } });
+
+    mockFrom.mockReturnValue(
+      makeChain({
+        data: { id: "company-1", name: "Empresa", logo_url: "https://storage.fake/logos/company-1/logo.png" },
+        error: null,
+      })
+    );
+
+    const result = await uploadCompanyLogo("company-1", file);
+
+    expect(mockStorageFrom).toHaveBeenCalledWith("logos");
+    expect(mockUpload).toHaveBeenCalled();
+    expect(result.logoUrl).toBe("https://storage.fake/logos/company-1/logo.png");
+  });
+});
+
+describe("removeCompanyLogo", () => {
+  it("chama updateCompany com logoUrl nulo", async () => {
+    mockFrom.mockReturnValue(
+      makeChain({
+        data: { id: "company-1", name: "Empresa", logo_url: null },
+        error: null,
+      })
+    );
+
+    const result = await removeCompanyLogo("company-1");
+
+    expect(result.logoUrl).toBeNull();
   });
 });
 
@@ -113,7 +183,7 @@ describe("createCompany (onboarding)", () => {
       notification_email: "estoque@empresa.com",
       initials: "EB",
     });
-    expect(mockFrom).not.toHaveBeenCalled(); // nunca deve ir direto ao Supabase
+    expect(mockFrom).not.toHaveBeenCalled();
     expect(result.notificationEmail).toBe("estoque@empresa.com");
   });
 

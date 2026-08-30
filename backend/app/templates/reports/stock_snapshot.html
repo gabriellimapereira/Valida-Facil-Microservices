@@ -1,28 +1,106 @@
 {% extends "reports/base.html" %}
 {% block content %}
-<div class="summary">
-  <div class="summary-card"><div class="label">Total de produtos</div><div class="value">{{ total_products }}</div></div>
-  <div class="summary-card"><div class="label">Valor em estoque</div><div class="value">{{ total_value }}</div></div>
-  <div class="summary-card"><div class="label">Itens com estoque baixo</div><div class="value">{{ low_stock_count }}</div></div>
+
+<!-- Cartões de Resumo do Estoque -->
+<table class="summary-table-container">
+  <tr>
+    <!-- Resumo Geral -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Resumo Geral</div>
+      <div class="summary-card-body">
+        <table class="summary-data-table">
+          <tr>
+            <td class="label">Total de Itens Cadastrados:</td>
+            <td class="value">{{ total_products }}</td>
+          </tr>
+          <tr>
+            <td class="label">Total de Itens com Estoque:</td>
+            <td class="value">{{ items_in_stock_count }}</td>
+          </tr>
+          <tr>
+            <td class="label">Total de Itens sem Estoque:</td>
+            <td class="value">{{ items_out_of_stock_count }}</td>
+          </tr>
+          <tr>
+            <td class="label">Itens com Estoque Baixo:</td>
+            <td class="value" style="color: {% if low_stock_count > 0 %}#B45309{% else %}#0F172A{% endif %};">
+              {{ low_stock_count }}
+            </td>
+          </tr>
+          <tr>
+            <td class="label">Total de Unidades Físicas:</td>
+            <td class="value">{{ total_quantity_fmt }}</td>
+          </tr>
+        </table>
+      </div>
+    </td>
+
+    <!-- Destaque Valor Total -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Valor Total do Estoque</div>
+      <div class="summary-card-body">
+        <div class="highlight-metric-box">
+          <div class="highlight-metric-label">Patrimônio em Mercadoria</div>
+          <div class="highlight-metric-value">{{ total_value }}</div>
+          <div style="font-size: 7pt; color: #64748B; margin-top: 4px;">
+            Baseado no preço unitário de cadastro
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- Detalhamento do Estoque -->
+<div class="section-container">
+  <div class="section-header">Detalhamento do Estoque</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="center" style="width: 9%;">Código</th>
+        <th style="width: 29%;">Descrição do Produto</th>
+        <th style="width: 17%;">Categoria</th>
+        <th class="center" style="width: 11%;">Validade</th>
+        <th class="right" style="width: 10%;">Qtd.</th>
+        <th class="right" style="width: 12%;">Valor Unit.</th>
+        <th class="right" style="width: 12%;">Valor Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td class="center" style="font-family: monospace; font-weight: 600; color: #334155;">{{ p.code }}</td>
+        <td>
+          <strong>{{ p.name }}</strong>
+        </td>
+        <td>{{ p.category_label }}</td>
+        <td class="center">{{ p.expiry_fmt }}</td>
+        <td class="right" style="font-weight: 600;">
+          {{ p.quantity_fmt }}
+        </td>
+        <td class="right">{{ p.price_fmt }}</td>
+        <td class="right" style="font-weight: 700; color: #0F172A;">{{ p.total_fmt }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="center" style="padding: 16px; color: #64748B;">
+          Nenhum produto cadastrado no estoque até o momento.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if products %}
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="4" style="text-align: right; text-transform: uppercase; letter-spacing: 0.04em;">Total Geral:</td>
+        <td class="right">{{ total_quantity_fmt }}</td>
+        <td class="right">—</td>
+        <td class="right">{{ total_value }}</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
 </div>
 
-<table>
-  <tr>
-    <th>Produto</th><th>Código</th><th>Categoria</th><th>Qtd.</th><th>Preço</th><th>Valor total</th><th>Validade</th>
-  </tr>
-  {% for p in products %}
-  <tr>
-    <td>{{ p.name }}</td>
-    <td>{{ p.code }}</td>
-    <td>{{ p.category_label }}</td>
-    <td>
-      {{ p.quantity }}
-      {% if p.low_stock %}<span class="badge badge-red">baixo</span>{% endif %}
-    </td>
-    <td>{{ p.price_fmt }}</td>
-    <td>{{ p.total_fmt }}</td>
-    <td>{{ p.expiry_fmt }}</td>
-  </tr>
-  {% endfor %}
-</table>
 {% endblock %}
+

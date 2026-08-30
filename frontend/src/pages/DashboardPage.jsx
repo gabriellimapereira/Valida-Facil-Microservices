@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Boxes, Layers, Plus, ShieldAlert, TrendingUp } from "lucide-react";
 import MetricCard from "../components/ui/MetricCard";
+import ExpiryBadge from "../components/ui/ExpiryBadge";
 import { useProducts } from "../context/ProductContext";
 import { useCompany } from "../context/CompanyContext";
 import { CATEGORIES } from "../data/categories";
@@ -89,7 +90,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-slate-500">{p.quantity} un.</span>
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${urgency.chip}`}>{urgency.label}</span>
+                    <ExpiryBadge urgency={urgency} size="md" />
                   </li>
                 );
               })}
@@ -114,7 +115,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="bg-slate-900 rounded-2xl p-5 text-white">
+          <div className="bg-navy rounded-2xl p-5 text-white shadow-sm">
             <p className="font-semibold text-sm mb-3">Distribuição por categoria</p>
             <ul className="space-y-2.5">
               {CATEGORIES.map((c) => {

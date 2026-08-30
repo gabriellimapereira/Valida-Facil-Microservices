@@ -1,28 +1,96 @@
 {% extends "reports/base.html" %}
 {% block content %}
-<div class="summary">
-  <div class="summary-card"><div class="label">Movimentações no período</div><div class="value">{{ total_movements }}</div></div>
-  <div class="summary-card"><div class="label">Entradas</div><div class="value">{{ total_in }}</div></div>
-  <div class="summary-card"><div class="label">Saídas</div><div class="value">{{ total_out }}</div></div>
+
+<!-- Cartões de Resumo das Movimentações -->
+<table class="summary-table-container">
+  <tr>
+    <!-- Resumo Geral -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Resumo do Período</div>
+      <div class="summary-card-body">
+        <table class="summary-data-table">
+          <tr>
+            <td class="label">Total de Movimentações:</td>
+            <td class="value">{{ total_movements }}</td>
+          </tr>
+          <tr>
+            <td class="label">Registros de Entrada:</td>
+            <td class="value" style="color: #0F766E;">{{ total_in }}</td>
+          </tr>
+          <tr>
+            <td class="label">Registros de Saída:</td>
+            <td class="value" style="color: #B91C1C;">{{ total_out }}</td>
+          </tr>
+          <tr>
+            <td class="label">Registros de Ajuste:</td>
+            <td class="value" style="color: #B45309;">{{ total_adjust }}</td>
+          </tr>
+        </table>
+      </div>
+    </td>
+
+    <!-- Destaque Volume -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Saldo de Movimentação</div>
+      <div class="summary-card-body">
+        <div class="highlight-metric-box">
+          <div class="highlight-metric-label">Variação Líquida de Unidades</div>
+          <div class="highlight-metric-value" style="color: {% if net_units >= 0 %}#0F766E{% else %}#B91C1C{% endif %};">
+            {{ net_units_fmt }}
+          </div>
+          <div style="font-size: 7pt; color: #64748B; margin-top: 4px;">
+            Entradas vs Saídas & Ajustes
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- Detalhamento das Movimentações -->
+<div class="section-container">
+  <div class="section-header">Detalhamento das Movimentações</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="center" style="width: 15%;">Data / Hora</th>
+        <th class="center" style="width: 11%;">Código</th>
+        <th style="width: 32%;">Produto</th>
+        <th class="center" style="width: 12%;">Tipo</th>
+        <th class="right" style="width: 10%;">Variação</th>
+        <th style="width: 20%;">Observação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movements %}
+      <tr>
+        <td class="center" style="color: #475569;">{{ m.date_fmt }}</td>
+        <td class="center" style="font-family: monospace; font-weight: 600; color: #334155;">{{ m.product_code }}</td>
+        <td><strong>{{ m.product_name }}</strong></td>
+        <td class="center">
+          {% if m.movement_type == 'entrada' %}
+            <span class="badge badge-teal">Entrada</span>
+          {% elif m.movement_type == 'saida' %}
+            <span class="badge badge-red">Saída</span>
+          {% else %}
+            <span class="badge badge-amber">Ajuste</span>
+          {% endif %}
+        </td>
+        <td class="right" style="font-weight: 700; color: {% if m.delta_val > 0 %}#0F766E{% elif m.delta_val < 0 %}#B91C1C{% else %}#334155{% endif %};">
+          {{ m.delta_fmt }}
+        </td>
+        <td style="color: #475569; font-size: 7.2pt;">{{ m.note or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="center" style="padding: 16px; color: #64748B;">
+          Nenhuma movimentação registrada no período selecionado.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
-<table>
-  <tr>
-    <th>Data</th><th>Produto</th><th>Código</th><th>Tipo</th><th>Variação</th><th>Observação</th>
-  </tr>
-  {% for m in movements %}
-  <tr>
-    <td>{{ m.date_fmt }}</td>
-    <td>{{ m.product_name }}</td>
-    <td>{{ m.product_code }}</td>
-    <td>
-      {% if m.movement_type == 'entrada' %}<span class="badge badge-teal">entrada</span>
-      {% elif m.movement_type == 'saida' %}<span class="badge badge-red">saída</span>
-      {% else %}<span class="badge badge-amber">ajuste</span>{% endif %}
-    </td>
-    <td>{{ m.delta_fmt }}</td>
-    <td>{{ m.note or '—' }}</td>
-  </tr>
-  {% endfor %}
-</table>
 {% endblock %}
+

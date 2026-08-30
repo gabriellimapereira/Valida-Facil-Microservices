@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
+import TactileButton from "../components/ui/TactileButton";
 
 const Logo = ({ dark }) => (
   <div className={`flex items-center gap-3 ${dark ? "" : "lg:hidden mb-10 justify-center"}`}>
@@ -17,7 +18,7 @@ const Logo = ({ dark }) => (
 
 function BrandPanel() {
   return (
-    <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden flex-col justify-between p-12">
+    <div className="hidden lg:flex lg:w-1/2 bg-navy relative overflow-hidden flex-col justify-between p-12">
       <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-amber-600/10" />
       <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-teal-500/10 -mb-24 -ml-24" />
       <div className="relative"><Logo dark /></div>
@@ -122,13 +123,16 @@ function ForgotPasswordForm({ onBack }) {
           </div>
         )}
 
-        <button
+        <TactileButton
           type="submit"
+          variant="amber"
           disabled={submitting}
-          className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold text-sm py-3 rounded-xl transition shadow-sm shadow-amber-600/20"
+          className="w-full"
+          padding="12px 20px"
+          rounded={12}
         >
           {submitting ? "Enviando..." : "Enviar link de redefinição"}
-        </button>
+        </TactileButton>
 
         <button type="button" onClick={onBack} className="w-full text-center text-sm font-medium text-slate-500 hover:text-slate-700">
           ← Voltar para o login
@@ -222,13 +226,16 @@ function LoginForm({ onForgotPassword }) {
           Manter-me conectado
         </label>
 
-        <button
+        <TactileButton
           type="submit"
+          variant="amber"
           disabled={loading}
-          className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold text-sm py-3 rounded-xl transition shadow-sm shadow-amber-600/20"
+          className="w-full"
+          padding="12px 20px"
+          rounded={12}
         >
           {loading ? "Entrando..." : "Entrar"}
-        </button>
+        </TactileButton>
       </form>
 
       <p className="text-center text-xs text-slate-400 mt-8">

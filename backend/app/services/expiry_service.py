@@ -14,6 +14,7 @@ from datetime import date, timedelta
 
 from supabase import Client
 
+from app.config import settings
 from app.core.supabase_client import service_client
 from app.services.email_service import send_email
 from app.utils.templating import render
@@ -61,7 +62,12 @@ def check_and_notify_company(client: Client, company_id: str, window_days: int =
         subject=f"⏰ {len(products)} produto(s) vencendo em breve — {company.get('name', '')}",
         html_body=html,
     )
-    return {"notified": sent, "count": len(products)}
+    return {
+        "notified": sent,
+        "count": len(products),
+        "email": notification_email,
+        "reason": None if sent else ("SMTP não configurado no .env do backend" if not settings.is_smtp_configured else "Falha no envio de e-mail"),
+    }
 
 
 def run_expiry_check_all_companies(window_days: int = 15) -> None:

@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeftRight, ArrowUpDown, ChevronLeft, ChevronRight, PackageSearch, Pencil, Trash2 } from "lucide-react";
 import CategoryBadge from "../ui/CategoryBadge";
+import ExpiryBadge from "../ui/ExpiryBadge";
 import { brl, fmtDate, expiryUrgency, isLowStock } from "../../utils/formatters";
 
 function StatusChips({ p }) {
@@ -11,7 +12,7 @@ function StatusChips({ p }) {
   }
   return (
     <>
-      {urgency && <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${urgency.chip}`}>{urgency.label}</span>}
+      {urgency && <ExpiryBadge urgency={urgency} size="sm" />}
       {low && (
         <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-200">
           Estoque baixo

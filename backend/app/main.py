@@ -28,12 +28,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configuração CORS abrangente para aceitar preflights OPTIONS de qualquer porta local / frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=[
+        settings.frontend_url,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(companies.router, prefix="/companies", tags=["Empresas"])

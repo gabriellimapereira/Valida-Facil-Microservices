@@ -4,6 +4,7 @@ import { AlertTriangle, Boxes, CheckCircle2, Eye, EyeOff, Lock } from "lucide-re
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
+import TactileButton from "../components/ui/TactileButton";
 
 // Tela que o link do e-mail de "trocar senha" abre. O supabase-js processa
 // sozinho o token que vem na URL (hash) assim que a página carrega e
@@ -116,12 +117,15 @@ export default function ResetPasswordPage() {
             <p className="text-sm text-slate-500 mb-6">
               Esse link de troca de senha não é mais válido. Solicite um novo na tela de login.
             </p>
-            <button
+            <TactileButton
+              variant="amber"
               onClick={() => navigate("/login", { replace: true })}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm py-3 rounded-xl transition"
+              className="w-full"
+              padding="12px 20px"
+              rounded={12}
             >
               Voltar para o login
-            </button>
+            </TactileButton>
           </div>
         </div>
       </div>
@@ -199,13 +203,16 @@ export default function ResetPasswordPage() {
               </div>
             )}
 
-            <button
+            <TactileButton
               type="submit"
+              variant="amber"
               disabled={submitting}
-              className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold text-sm py-3 rounded-xl transition shadow-sm shadow-amber-600/20"
+              className="w-full"
+              padding="12px 20px"
+              rounded={12}
             >
               {submitting ? "Salvando..." : "Salvar nova senha"}
-            </button>
+            </TactileButton>
           </form>
         </div>
       </div>

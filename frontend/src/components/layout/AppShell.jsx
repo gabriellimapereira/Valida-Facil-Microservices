@@ -41,7 +41,7 @@ export default function AppShell() {
         setCollapsed={setCollapsed}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-100">
         <TopHeader
           title={title}
           subtitle={subtitle}
@@ -49,7 +49,7 @@ export default function AppShell() {
           company={company}
           alertCount={alertCount}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-100">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

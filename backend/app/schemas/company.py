@@ -11,10 +11,18 @@ class CompanyCreate(BaseModel):
     segment: Optional[str] = Field(default=None, max_length=100)
     email: Optional[EmailStr] = None
     notification_email: EmailStr
-    phone: Optional[str] = Field(default=None, max_length=20)
+    phone: str = Field(..., description="Telefone com DDD, com ou sem pontuação")
     cnpj: str = Field(..., description="CNPJ da empresa, com ou sem pontuação")
     address: Optional[str] = Field(default=None, max_length=300)
     initials: str = Field(..., min_length=1, max_length=3)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        digits = re.sub(r"\D", "", value or "")
+        if len(digits) < 10 or len(digits) > 11:
+            raise ValueError("Telefone deve conter DDD + número (10 ou 11 dígitos).")
+        return value.strip()
 
     @field_validator("cnpj")
     @classmethod

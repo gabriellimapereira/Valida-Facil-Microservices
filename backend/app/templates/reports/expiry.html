@@ -1,24 +1,106 @@
 {% extends "reports/base.html" %}
 {% block content %}
-<div class="summary">
-  <div class="summary-card"><div class="label">Produtos no período</div><div class="value">{{ total }}</div></div>
-  <div class="summary-card"><div class="label">Janela analisada</div><div class="value">{{ window_days }} dias</div></div>
-</div>
 
-<table>
-  <tr><th>Produto</th><th>Código</th><th>Quantidade</th><th>Vencimento</th><th>Situação</th></tr>
-  {% for p in products %}
+<!-- Cartões de Resumo de Validade -->
+<table class="summary-table-container">
   <tr>
-    <td>{{ p.name }}</td>
-    <td>{{ p.code }}</td>
-    <td>{{ p.quantity }}</td>
-    <td>{{ p.expiry_fmt }}</td>
-    <td>
-      {% if p.days_left <= 2 %}<span class="badge badge-red">{{ p.days_left }} dia(s)</span>
-      {% elif p.days_left <= 7 %}<span class="badge badge-amber">{{ p.days_left }} dia(s)</span>
-      {% else %}<span class="badge badge-teal">{{ p.days_left }} dia(s)</span>{% endif %}
+    <!-- Resumo Geral -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Resumo de Validade</div>
+      <div class="summary-card-body">
+        <table class="summary-data-table">
+          <tr>
+            <td class="label">Total de Itens na Janela:</td>
+            <td class="value">{{ total }}</td>
+          </tr>
+          <tr>
+            <td class="label">Crítico (&le; 3 dias / Vencidos):</td>
+            <td class="value" style="color: #B91C1C;">{{ critical_count }}</td>
+          </tr>
+          <tr>
+            <td class="label">Alerta (&le; 7 dias):</td>
+            <td class="value" style="color: #B45309;">{{ warning_count }}</td>
+          </tr>
+          <tr>
+            <td class="label">Janela Selecionada:</td>
+            <td class="value">Próximos {{ window_days }} dias</td>
+          </tr>
+        </table>
+      </div>
+    </td>
+
+    <!-- Destaque Valor em Risco -->
+    <td class="summary-card" style="width: 50%;">
+      <div class="summary-card-header">Valor em Risco</div>
+      <div class="summary-card-body">
+        <div class="highlight-metric-box">
+          <div class="highlight-metric-label">Impacto Financeiro Potencial</div>
+          <div class="highlight-metric-value" style="color: #B91C1C;">{{ total_risk_value }}</div>
+          <div style="font-size: 7pt; color: #64748B; margin-top: 4px;">
+            Soma do valor de produtos na janela
+          </div>
+        </div>
+      </div>
     </td>
   </tr>
-  {% endfor %}
 </table>
+
+<!-- Detalhamento dos Produtos a Vencer -->
+<div class="section-container">
+  <div class="section-header">Detalhamento dos Produtos a Vencer</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="center" style="width: 10%;">Código</th>
+        <th style="width: 30%;">Produto</th>
+        <th style="width: 16%;">Categoria</th>
+        <th class="center" style="width: 12%;">Vencimento</th>
+        <th class="right" style="width: 8%;">Qtd.</th>
+        <th class="right" style="width: 12%;">Valor Total</th>
+        <th class="center" style="width: 12%;">Urgência</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td class="center" style="font-family: monospace; font-weight: 600; color: #334155;">{{ p.code }}</td>
+        <td><strong>{{ p.name }}</strong></td>
+        <td>{{ p.category_label }}</td>
+        <td class="center" style="font-weight: 600;">{{ p.expiry_fmt }}</td>
+        <td class="right">{{ p.quantity_fmt }}</td>
+        <td class="right" style="font-weight: 600;">{{ p.total_fmt }}</td>
+        <td class="center">
+          {% if p.days_left == 0 %}
+            <span class="badge badge-red">Vence Hoje / Vencido</span>
+          {% elif p.days_left <= 3 %}
+            <span class="badge badge-red">{{ p.days_left }} dia(s)</span>
+          {% elif p.days_left <= 7 %}
+            <span class="badge badge-amber">{{ p.days_left }} dia(s)</span>
+          {% else %}
+            <span class="badge badge-teal">{{ p.days_left }} dia(s)</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="center" style="padding: 16px; color: #64748B;">
+          Nenhum produto a vencer na janela de {{ window_days }} dias.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if products %}
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="4" style="text-align: right; text-transform: uppercase; letter-spacing: 0.04em;">Total em Risco:</td>
+        <td class="right">{{ total_quantity_fmt }}</td>
+        <td class="right">{{ total_risk_value }}</td>
+        <td class="center">—</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>
+
 {% endblock %}
+

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { CATEGORIES } from "../../data/categories";
+import TactileButton from "../ui/TactileButton";
+import DatePicker from "../ui/DatePicker";
 
 export default function ProductModal({ product, onClose, onSave }) {
   const isEdit = Boolean(product);
@@ -45,8 +48,8 @@ export default function ProductModal({ product, onClose, onSave }) {
       err ? "border-red-300 focus:ring-red-200" : "border-slate-200 focus:ring-amber-500/30 focus:border-amber-500"
     }`;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50" onClick={onClose}>
+  const modalContent = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
           <h3 className="font-semibold text-slate-900">{isEdit ? "Editar produto" : "Cadastrar novo produto"}</h3>
@@ -112,7 +115,7 @@ export default function ProductModal({ product, onClose, onSave }) {
               <label className="block text-xs font-medium text-slate-600 mb-1.5">
                 Data de validade <span className="text-slate-400 font-normal">(se aplicável)</span>
               </label>
-              <input type="date" value={form.expiry} onChange={(e) => set("expiry", e.target.value)} className={inputCls(false)} />
+              <DatePicker value={form.expiry} onChange={(e) => set("expiry", e.target.value)} placeholder="Selecione a data" />
             </div>
 
             <div className="col-span-2">
@@ -122,15 +125,29 @@ export default function ProductModal({ product, onClose, onSave }) {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition">
+            <TactileButton
+              variant="secondary"
+              onClick={onClose}
+              className="flex-1"
+              padding="10px 16px"
+              rounded={12}
+            >
               Cancelar
-            </button>
-            <button type="submit" className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition shadow-sm shadow-amber-600/20">
+            </TactileButton>
+            <TactileButton
+              type="submit"
+              variant="amber"
+              className="flex-1"
+              padding="10px 16px"
+              rounded={12}
+            >
               {isEdit ? "Salvar alterações" : "Cadastrar produto"}
-            </button>
+            </TactileButton>
           </div>
         </form>
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }

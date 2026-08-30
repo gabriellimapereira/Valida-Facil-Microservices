@@ -5,10 +5,12 @@ import { AlertTriangle, Boxes, Building2, Mail, Phone } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as companyService from "../services/companyService";
-import { formatCnpj } from "../utils/formatters";
+import { formatCnpj, isValidCnpj, formatPhone } from "../utils/formatters";
 import CharCounter from "../components/ui/CharCounter";
+import CnpjValidityHint from "../components/ui/CnpjValidityHint";
+import TactileButton from "../components/ui/TactileButton";
 
-const FIELD_LIMITS = { name: 200, segment: 100, phone: 20, address: 300 };
+const FIELD_LIMITS = { name: 200, segment: 100, address: 300 };
 
 const EMPTY_FORM = {
   name: "",
@@ -38,12 +40,17 @@ export default function OnboardingPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.notificationEmail.trim() || !form.initials.trim() || !form.cnpj.trim()) {
-      setError("Preencha nome da empresa, e-mail de notificações, sigla e CNPJ.");
+    if (!form.name.trim() || !form.notificationEmail.trim() || !form.initials.trim() || !form.phone.trim() || !form.cnpj.trim()) {
+      setError("Preencha nome da empresa, e-mail de notificações, sigla, telefone e CNPJ.");
       return;
     }
-    if (form.cnpj.replace(/\D/g, "").length !== 14) {
-      setError("O CNPJ precisa ter os 14 dígitos completos.");
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      setError("Telefone incompleto — informe DDD + número.");
+      return;
+    }
+    if (!isValidCnpj(form.cnpj)) {
+      setError("CNPJ inválido. Confira os números digitados.");
       return;
     }
     setError("");
@@ -114,7 +121,14 @@ export default function OnboardingPage() {
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Telefone</label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={FIELD_LIMITS.phone} placeholder="(00) 00000-0000" className={inputCls} />
+                  <input
+                    value={form.phone}
+                    onChange={(e) => set("phone", formatPhone(e.target.value))}
+                    inputMode="numeric"
+                    maxLength={15}
+                    placeholder="(00) 00000-0000"
+                    className={inputCls}
+                  />
                 </div>
               </div>
               <div>
@@ -127,6 +141,7 @@ export default function OnboardingPage() {
                   placeholder="00.000.000/0000-00"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
                 />
+                <CnpjValidityHint value={form.cnpj} />
               </div>
             </div>
 
@@ -143,13 +158,16 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <button
+            <TactileButton
               type="submit"
+              variant="amber"
               disabled={submitting}
-              className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold text-sm py-3 rounded-xl transition shadow-sm shadow-amber-600/20"
+              className="w-full"
+              padding="12px 20px"
+              rounded={12}
             >
               {submitting ? "Cadastrando..." : "Cadastrar empresa e continuar"}
-            </button>
+            </TactileButton>
           </form>
         </div>
       </div>
