@@ -7,6 +7,15 @@ const SIZES = {
   xl: "w-16 h-16 rounded-2xl text-xl",
 };
 
+export function getCompanyInitials(name) {
+  if (!name || typeof name !== "string") return "VF";
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return words[0].slice(0, 2).toUpperCase();
+}
+
 export default function CompanyLogo({
   company,
   size = "md",
@@ -25,7 +34,7 @@ export default function CompanyLogo({
       >
         <img
           src={company.logoUrl}
-          alt={company?.name || "Logotipo da empresa"}
+          alt={`Logotipo ${company?.name || "da empresa"}`}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />
@@ -33,12 +42,13 @@ export default function CompanyLogo({
     );
   }
 
+  const initials = company?.initials || getCompanyInitials(company?.name);
+
   return (
     <div
       className={`${sizeClass} ${bgClass} text-white flex items-center justify-center font-bold shrink-0 select-none shadow-sm ${className}`}
     >
-      {company?.initials || company?.name?.slice(0, 2)?.toUpperCase() || "VF"}
+      {initials}
     </div>
   );
 }
-

@@ -44,6 +44,11 @@ export default function OnboardingPage() {
       setError("Preencha nome da empresa, e-mail de notificações, sigla, telefone e CNPJ.");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.notificationEmail.trim())) {
+      setError("Informe um e-mail de notificações válido (exemplo@empresa.com).");
+      return;
+    }
     const phoneDigits = form.phone.replace(/\D/g, "");
     if (phoneDigits.length < 10 || phoneDigits.length > 11) {
       setError("Telefone incompleto — informe DDD + número.");

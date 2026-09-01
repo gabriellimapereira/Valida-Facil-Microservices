@@ -22,16 +22,52 @@ export default function ReportModal({ onClose, onSubmit }) {
   const usesDateRange = reportType === "movimentacoes" || reportType === "giro_estoque";
   const usesExpiryWindow = reportType === "produtos_a_vencer";
 
+  const handleDaysKeyDown = (e) => {
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDaysChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (digits === "") {
+      setExpiryWindowDays("");
+      return;
+    }
+    const num = Number(digits);
+    if (num > 365) {
+      setExpiryWindowDays(365);
+    } else {
+      setExpiryWindowDays(num);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (usesDateRange && dateFrom && dateTo) {
+      if (dateFrom > dateTo) {
+        setError("A data inicial não pode ser posterior à data final.");
+        return;
+      }
+    }
+
+    if (usesExpiryWindow) {
+      const days = Number(expiryWindowDays);
+      if (!days || isNaN(days) || days < 1 || days > 365) {
+        setError("Informe uma janela de validade válida entre 1 e 365 dias.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       await onSubmit({
         reportType,
         format: "pdf",
-        dateFrom: usesDateRange ? dateFrom : undefined,
-        dateTo: usesDateRange ? dateTo : undefined,
+        dateFrom: usesDateRange && dateFrom ? dateFrom : undefined,
+        dateTo: usesDateRange && dateTo ? dateTo : undefined,
         expiryWindowDays: usesExpiryWindow ? Number(expiryWindowDays) : undefined,
       });
       onClose();
@@ -45,18 +81,18 @@ export default function ReportModal({ onClose, onSubmit }) {
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-navy text-white flex items-center justify-center shadow-sm">
               <FileText size={18} />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-base">Gerar Relatório em PDF</h3>
+              <h3 className="font-bold text-slate-900 text-base">Gerar Relatório em PDF</h3>
               <p className="text-xs text-slate-500">Documento formatado oficial para impressão ou download</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition p-1">
-            <X size={20} />
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
+            <X size={18} />
           </button>
         </div>
 
@@ -72,8 +108,11 @@ export default function ReportModal({ onClose, onSubmit }) {
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setReportType(t.id)}
-                    className={`text-left px-3.5 py-2.5 rounded-xl border transition ${
+                    onClick={() => {
+                      setReportType(t.id);
+                      setError("");
+                    }}
+                    className={`text-left px-3.5 py-2.5 rounded-xl border transition cursor-pointer ${
                       isSelected
                         ? "border-amber-500 bg-amber-50/60 ring-1 ring-amber-500/20"
                         : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
@@ -94,18 +133,24 @@ export default function ReportModal({ onClose, onSubmit }) {
           {usesDateRange && (
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Data Inicial</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Data Inicial</label>
                 <DatePicker
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setError("");
+                  }}
                   placeholder="Data inicial"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Data Final</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Data Final</label>
                 <DatePicker
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setError("");
+                  }}
                   placeholder="Data final"
                 />
               </div>
@@ -114,17 +159,20 @@ export default function ReportModal({ onClose, onSubmit }) {
 
           {usesExpiryWindow && (
             <div className="pt-1">
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                Janela de análise (próximos dias)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Janela de análise (próximos dias)
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">1 a 365 dias</span>
+              </div>
               <div className="relative">
                 <input
-                  type="number"
-                  min="1"
-                  max="365"
+                  type="text"
+                  inputMode="numeric"
                   value={expiryWindowDays}
-                  onChange={(e) => setExpiryWindowDays(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                  onKeyDown={handleDaysKeyDown}
+                  onChange={handleDaysChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
                   placeholder="Ex: 15"
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-medium pointer-events-none">
@@ -145,12 +193,12 @@ export default function ReportModal({ onClose, onSubmit }) {
           </div>
 
           {error && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
               {error}
             </div>
           )}
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
             <TactileButton
               variant="secondary"
               onClick={onClose}

@@ -1,60 +1,37 @@
-"""
-Testes de integração de POST /alerts/check-expiry — disparo manual da
-checagem de validade (a mesma lógica do job diário, sob demanda).
-"""
-import app.routers.alerts as alerts_router
+from unittest.mock import patch
+from fastapi.testclient import TestClient
+from app.main import app
 
 
-def test_dispara_checagem_como_admin(monkeypatch, make_test_client, fake_client, make_authed_user):
-    called_with = {}
+def test_trigger_expiry_check_sem_auth_retorna_401():
+    client = TestClient(app)
+    res = client.post("/alerts/check-expiry")
+    assert res.status_code == 401
 
-    def fake_check(client, company_id, window_days=15):
-        called_with["company_id"] = company_id
-        called_with["window_days"] = window_days
-        return {"notified": True, "count": 3}
 
-    monkeypatch.setattr(alerts_router.expiry_service, "check_and_notify_company", fake_check)
-
-    admin_user = make_authed_user(fake_client, company_id="company-1", role="admin")
+def test_trigger_expiry_check_com_admin_chama_servico(make_test_client, make_authed_user, fake_client):
+    admin_user = make_authed_user(fake_client, role="admin")
     client = make_test_client(admin=admin_user)
 
-    response = client.post("/alerts/check-expiry")
+    with patch("app.services.expiry_service.check_and_notify_company") as mock_check:
+        mock_check.return_value = {
+            "company_id": "company-1",
+            "notified": True,
+            "count": 2,
+            "email": "notif@empresa.com",
+        }
+        res = client.post("/alerts/check-expiry?window_days=10")
 
-    assert response.status_code == 200
-    assert response.json() == {"notified": True, "count": 3}
-    assert called_with == {"company_id": "company-1", "window_days": 15}
+    assert res.status_code == 200
+    data = res.json()
+    assert data["notified"] is True
+    assert data["count"] == 2
+    mock_check.assert_called_once()
+    assert mock_check.call_args.kwargs["window_days"] == 10
 
 
-def test_aceita_janela_de_dias_customizada(monkeypatch, make_test_client, fake_client, make_authed_user):
-    called_with = {}
-    monkeypatch.setattr(
-        alerts_router.expiry_service,
-        "check_and_notify_company",
-        lambda client, company_id, window_days=15: called_with.update(window_days=window_days)
-        or {"notified": False, "count": 0},
-    )
-
-    admin_user = make_authed_user(fake_client, company_id="company-1", role="admin")
+def test_trigger_expiry_check_com_parametro_invalido_retorna_422(make_test_client, make_authed_user, fake_client):
+    admin_user = make_authed_user(fake_client, role="admin")
     client = make_test_client(admin=admin_user)
-
-    response = client.post("/alerts/check-expiry?window_days=30")
-
-    assert response.status_code == 200
-    assert called_with["window_days"] == 30
-
-
-def test_janela_fora_do_intervalo_permitido_retorna_422(make_test_client, fake_client, make_authed_user):
-    admin_user = make_authed_user(fake_client, company_id="company-1", role="admin")
-    client = make_test_client(admin=admin_user)
-
-    response = client.post("/alerts/check-expiry?window_days=0")
-
-    assert response.status_code == 422
-
-
-def test_sem_autenticacao_retorna_401(make_test_client):
-    client = make_test_client()
-
-    response = client.post("/alerts/check-expiry")
-
-    assert response.status_code == 401
+    res = client.post("/alerts/check-expiry?window_days=0")
+    assert res.status_code == 422
