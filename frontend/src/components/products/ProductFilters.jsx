@@ -17,8 +17,8 @@ export default function ProductFilters({
   const categoryLabel = CATEGORIES.find((c) => c.id === filters.category)?.label;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3.5">
-      <div className="flex flex-col lg:flex-row gap-3">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3.5 sm:p-4 space-y-3.5">
+      <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
         <div className="relative flex-1">
           <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input

@@ -108,8 +108,8 @@ export default function MovementModal({ product, onClose, onSubmit }) {
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto p-5 sm:p-6 border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-navy text-white flex items-center justify-center shadow-sm">
@@ -126,18 +126,29 @@ export default function MovementModal({ product, onClose, onSubmit }) {
         </div>
 
         {/* Projected Stock Box */}
-        <div className="my-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-slate-500 block">Estoque atual</span>
-            <span className="text-base font-bold text-slate-800 font-mono">{product.quantity} un.</span>
+        <div className={`my-4 p-3.5 rounded-xl border transition-colors ${
+          projectedQuantity < 0
+            ? "bg-red-50/80 border-red-200"
+            : "bg-slate-50 border-slate-200/80"
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-500 block">Estoque atual</span>
+              <span className="text-base font-bold text-slate-800 font-mono">{product.quantity} un.</span>
+            </div>
+            <div className="text-slate-300 font-bold">→</div>
+            <div className="text-right">
+              <span className="text-xs text-slate-500 block">Novo estoque previsto</span>
+              <span className={`text-base font-bold font-mono ${projectedQuantity < 0 ? "text-red-600 font-extrabold" : "text-teal-700"}`}>
+                {projectedQuantity} un.
+              </span>
+            </div>
           </div>
-          <div className="text-slate-300 font-bold">→</div>
-          <div className="text-right">
-            <span className="text-xs text-slate-500 block">Novo estoque previsto</span>
-            <span className={`text-base font-bold font-mono ${projectedQuantity < 0 ? "text-red-600" : "text-teal-700"}`}>
-              {projectedQuantity} un.
-            </span>
-          </div>
+          {projectedQuantity < 0 && (
+            <div className="mt-2.5 pt-2 border-t border-red-200/80 flex items-center gap-1.5 text-xs text-red-600 font-semibold">
+              <span>⚠️ Saldo insuficiente para retirada (máx: {product.quantity} un.)</span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

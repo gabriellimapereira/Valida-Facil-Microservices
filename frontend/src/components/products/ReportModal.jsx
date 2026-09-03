@@ -79,9 +79,9 @@ export default function ReportModal({ onClose, onSubmit }) {
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[92vh] overflow-y-auto border border-slate-100" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-navy text-white flex items-center justify-center shadow-sm">
               <FileText size={18} />
@@ -96,7 +96,7 @@ export default function ReportModal({ onClose, onSubmit }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               Selecione o tipo de relatório

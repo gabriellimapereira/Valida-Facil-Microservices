@@ -30,15 +30,15 @@ export default function DashboardPage() {
   if (!company) return null;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Top Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 sm:p-7 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <p className="text-xs sm:text-sm font-semibold text-amber-600 capitalize mb-1">{todayLabel}</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
             {greeting}, {company.name.split(" ").slice(0, 2).join(" ")}
           </h2>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
             Aqui está o resumo do seu estoque hoje.
           </p>
         </div>
@@ -47,7 +47,7 @@ export default function DashboardPage() {
           <TactileButton
             onClick={() => navigate("/estoque?novo=1")}
             variant="amber"
-            padding="11px 22px"
+            padding="10px 20px"
             rounded={12}
             className="w-full sm:w-auto"
           >
@@ -58,7 +58,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <MetricCard
           icon={Boxes}
           label="Total de produtos"
@@ -84,7 +84,7 @@ export default function DashboardPage() {
           icon={TrendingUp}
           label="Patrimônio em estoque"
           value={brl(totalValue)}
-          accent="light"
+          accent="emerald"
           sub={`${lowStockItems.length} item(ns) em nível baixo`}
         />
       </div>
@@ -105,7 +105,7 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => navigate("/estoque")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 transition py-1 px-2 rounded-lg hover:bg-teal-50"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 transition py-1 px-2 rounded-lg hover:bg-teal-50 cursor-pointer"
             >
               Ver estoque completo
               <ArrowRight size={13} />
@@ -162,40 +162,51 @@ export default function DashboardPage() {
         {/* Right Column: Low Stock & Category Distribution */}
         <div className="space-y-6 flex flex-col">
           {/* Low Stock Alert Box */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex-1">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">Alerta de estoque baixo</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Itens que precisam de reposição</p>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                lowStockItems.length > 0 ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-teal-50 text-teal-800 border-teal-200"
+              }`}>
                 {lowStockItems.length} {lowStockItems.length === 1 ? "item" : "itens"}
               </span>
             </div>
 
             {lowStockItems.length === 0 ? (
-              <p className="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                Todos os produtos estão com níveis acima do limite mínimo cadastrado.
-              </p>
+              <div className="py-7 px-4 text-center bg-teal-50/40 rounded-2xl border border-teal-100/60 my-auto">
+                <div className="w-10 h-10 rounded-xl bg-teal-100/80 text-teal-700 flex items-center justify-center mx-auto mb-2">
+                  <CheckCircle2 size={20} />
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800">Estoque em conformidade</p>
+                <p className="text-xs text-slate-500 mt-0.5">Todos os itens estão acima do mínimo.</p>
+              </div>
             ) : (
-              <ul className="space-y-3.5">
+              <ul className="space-y-3 my-auto">
                 {lowStockItems.slice(0, 4).map((p) => {
+                  const isOutOfStock = p.quantity === 0;
                   const pct = Math.min(100, Math.round((p.quantity / (p.minStock || 1)) * 100));
                   return (
                     <li
                       key={p.id}
                       onClick={() => navigate("/estoque")}
-                      className="p-3 rounded-xl hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-200/80"
+                      className="p-3 rounded-xl hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-200/80 group"
                     >
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-800 mb-1.5">
-                        <span className="truncate pr-2">{p.name}</span>
-                        <span className="text-red-600 shrink-0 font-mono">
-                          {p.quantity} / {p.minStock} un
+                        <span className="truncate pr-2 group-hover:text-amber-700 transition-colors">{p.name}</span>
+                        <span className={`shrink-0 font-mono text-[11px] px-2 py-0.5 rounded-md font-bold ${
+                          isOutOfStock ? "bg-red-100 text-red-700 border border-red-200" : "bg-amber-100 text-amber-800 border border-amber-200"
+                        }`}>
+                          {isOutOfStock ? "Esgotado (0)" : `${p.quantity} / ${p.minStock} un`}
                         </span>
                       </div>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-red-500 rounded-full transition-all"
+                          className={`h-full rounded-full transition-all ${
+                            isOutOfStock ? "bg-red-500" : "bg-amber-500"
+                          }`}
                           style={{ width: `${Math.max(8, pct)}%` }}
                         />
                       </div>
@@ -207,7 +218,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Category Distribution Box */}
-          <div className="bg-navy rounded-2xl p-6 text-white shadow-sm border border-slate-800 flex-1 overflow-hidden">
+          <div className="bg-navy rounded-2xl p-6 text-white shadow-sm border border-slate-800 flex-1">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-sm text-white">Distribuição por categoria</h3>
@@ -217,7 +228,7 @@ export default function DashboardPage() {
                 {totalProducts} produtos
               </span>
             </div>
-            <ul className="space-y-3.5">
+            <ul className="space-y-4">
               {CATEGORIES.map((c) => {
                 const count = products.filter((p) => p.category === c.id).length;
                 const pct = totalProducts ? Math.round((count / totalProducts) * 100) : 0;

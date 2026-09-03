@@ -22,6 +22,8 @@ export default function StockPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [sortField, setSortField] = useState("none");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -42,9 +44,36 @@ export default function StockPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sincroniza sortPrice de filters com sortField
+  useEffect(() => {
+    if (filters.sortPrice !== "none") {
+      setSortField("price");
+      setSortOrder(filters.sortPrice);
+    } else if (sortField === "price") {
+      setSortField("none");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.sortPrice]);
+
+  const handleSort = (field) => {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortOrder("asc");
+      if (field === "price") setFilters((f) => ({ ...f, sortPrice: "asc" }));
+      else setFilters((f) => ({ ...f, sortPrice: "none" }));
+    } else if (sortOrder === "asc") {
+      setSortOrder("desc");
+      if (field === "price") setFilters((f) => ({ ...f, sortPrice: "desc" }));
+    } else {
+      setSortField("none");
+      setSortOrder("asc");
+      if (field === "price") setFilters((f) => ({ ...f, sortPrice: "none" }));
+    }
+  };
+
   const filtered = useMemo(() => {
     let list = [...products];
-    const { search, category, dateFrom, dateTo, sortPrice } = filters;
+    const { search, category, dateFrom, dateTo } = filters;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
@@ -52,12 +81,25 @@ export default function StockPage() {
     if (category !== "all") list = list.filter((p) => p.category === category);
     if (dateFrom) list = list.filter((p) => p.expiry && p.expiry >= dateFrom);
     if (dateTo) list = list.filter((p) => p.expiry && p.expiry <= dateTo);
-    if (sortPrice === "asc") list.sort((a, b) => a.price - b.price);
-    if (sortPrice === "desc") list.sort((a, b) => b.price - a.price);
-    return list;
-  }, [products, filters]);
 
-  useEffect(() => setPage(1), [filters]);
+    if (sortField === "name") {
+      list.sort((a, b) => sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+    } else if (sortField === "price") {
+      list.sort((a, b) => sortOrder === "asc" ? a.price - b.price : b.price - a.price);
+    } else if (sortField === "quantity") {
+      list.sort((a, b) => sortOrder === "asc" ? a.quantity - b.quantity : b.quantity - a.quantity);
+    } else if (sortField === "expiry") {
+      list.sort((a, b) => {
+        if (!a.expiry) return 1;
+        if (!b.expiry) return -1;
+        return sortOrder === "asc" ? a.expiry.localeCompare(b.expiry) : b.expiry.localeCompare(a.expiry);
+      });
+    }
+
+    return list;
+  }, [products, filters, sortField, sortOrder]);
+
+  useEffect(() => setPage(1), [filters, sortField, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -69,7 +111,13 @@ export default function StockPage() {
     filters.sortPrice !== "none",
   ].filter(Boolean).length;
 
-  const clearFilters = () => setFilters(DEFAULT_FILTERS);
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(filters.search.trim()) || sortField !== "none";
+
+  const clearFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setSortField("none");
+    setSortOrder("asc");
+  };
 
   const handleSave = async (data) => {
     try {
@@ -124,33 +172,35 @@ export default function StockPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+    <div className="p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Gestão de estoque</h2>
-          <p className="text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Gestão de estoque</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <TactileButton
             variant="secondary"
             onClick={() => setReportModalOpen(true)}
-            padding="9px 16px"
+            padding="9px 12px sm:px-4"
             rounded={12}
+            className="w-full sm:w-auto"
           >
-            <div className="flex items-center gap-2">
-              <FileDown size={17} />
-              <span>Gerar relatório</span>
+            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold">
+              <FileDown size={15} />
+              <span className="truncate">Relatório</span>
             </div>
           </TactileButton>
           <TactileButton
             variant="amber"
             onClick={() => { setEditing(null); setModalOpen(true); }}
-            padding="9px 16px"
+            padding="9px 12px sm:px-4"
             rounded={12}
+            className="w-full sm:w-auto"
           >
-            <div className="flex items-center gap-2">
-              <Plus size={17} />
-              <span>Novo produto</span>
+            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold">
+              <Plus size={15} />
+              <span className="truncate">Novo produto</span>
             </div>
           </TactileButton>
         </div>
@@ -175,6 +225,12 @@ export default function StockPage() {
         onEdit={(p) => { setEditing(p); setModalOpen(true); }}
         onDelete={(p) => setDeleting(p)}
         onMovement={(p) => setMovingProduct(p)}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onSort={handleSort}
+        onClearFilters={clearFilters}
+        onNewProduct={() => { setEditing(null); setModalOpen(true); }}
+        hasActiveFilters={hasActiveFilters}
       />
 
       {modalOpen && (

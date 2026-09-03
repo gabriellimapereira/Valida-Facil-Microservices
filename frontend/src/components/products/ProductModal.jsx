@@ -143,9 +143,9 @@ export default function ProductModal({ product, onClose, onSave }) {
     }`;
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-sm z-10 rounded-t-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center shadow-sm">
               {isEdit ? <Boxes size={18} /> : <PackagePlus size={18} />}
@@ -160,7 +160,7 @@ export default function ProductModal({ product, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="p-6 space-y-4">
+        <form onSubmit={submit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Código / ID <span className="text-amber-600">*</span></label>

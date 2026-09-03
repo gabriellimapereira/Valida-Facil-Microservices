@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { apiClient } from "../lib/apiClient";
-import { MOCK_COMPANY } from "../data/mockData";
+import { MOCK_COMPANY, MOCK_MEMBERS } from "../data/mockData";
 
 let memoryCompany = { ...MOCK_COMPANY };
 
@@ -133,3 +133,44 @@ export async function uploadCompanyLogo(companyId, file) {
 export async function removeCompanyLogo(companyId) {
   return updateCompany(companyId, { logoUrl: null });
 }
+
+let memoryMembers = [...MOCK_MEMBERS];
+
+export async function fetchCompanyMembers(companyId) {
+  if (!isSupabaseConfigured) {
+    return Promise.resolve([...memoryMembers]);
+  }
+  return apiClient.get("/companies/members");
+}
+
+export async function inviteTeamMember({ email, fullName, role = "operador" }) {
+  if (!isSupabaseConfigured) {
+    const newMember = {
+      id: `user-demo-${Date.now()}`,
+      fullName,
+      email,
+      role,
+      createdAt: new Date().toISOString(),
+    };
+    memoryMembers.push(newMember);
+    return Promise.resolve(newMember);
+  }
+  return apiClient.post("/companies/invite", { email, full_name: fullName, role });
+}
+
+export async function updateMemberRole(memberId, role) {
+  if (!isSupabaseConfigured) {
+    memoryMembers = memoryMembers.map((m) => (m.id === memberId ? { ...m, role } : m));
+    return Promise.resolve(memoryMembers.find((m) => m.id === memberId));
+  }
+  return apiClient.patch(`/companies/members/${memberId}`, { role });
+}
+
+export async function removeMember(memberId) {
+  if (!isSupabaseConfigured) {
+    memoryMembers = memoryMembers.filter((m) => m.id !== memberId);
+    return Promise.resolve();
+  }
+  return apiClient.delete(`/companies/members/${memberId}`);
+}
+

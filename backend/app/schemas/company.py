@@ -56,7 +56,7 @@ class CompanyUpdate(BaseModel):
 
 class InviteUserRequest(BaseModel):
     email: EmailStr
-    full_name: str = Field(..., min_length=2)
+    full_name: str = Field(..., min_length=2, max_length=150)
     role: Literal["admin", "operador"] = "operador"
 
 
@@ -64,3 +64,16 @@ class InviteUserResponse(BaseModel):
     status: str
     user_id: str
     email: EmailStr
+
+
+class MemberOut(BaseModel):
+    id: UUID
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    role: str
+    created_at: Optional[datetime] = None
+
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: Literal["admin", "operador"]
+

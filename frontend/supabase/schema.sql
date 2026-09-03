@@ -1,25 +1,24 @@
 -- =====================================================================
--- EstoquePro — schema inicial para Supabase (PostgreSQL)
--- Execute no SQL Editor do seu projeto Supabase.
+-- Valida Fácil — Schema Limpo & Consolidado do Banco de Dados (PostgreSQL / Supabase)
+--
+-- Para Resetar e Recriar o Banco do Zero:
+-- Execute este script no SQL Editor do seu Dashboard no Supabase.
 -- =====================================================================
+
+-- 1. Limpeza opcional (Descomente se desejar apagar tudo e recriar do zero):
+/*
+drop table if exists stock_movements cascade;
+drop table if exists products cascade;
+drop table if exists profiles cascade;
+drop table if exists companies cascade;
+drop table if exists categories cascade;
+*/
 
 create extension if not exists "uuid-ossp";
 
--- Empresas (multi-tenant: cada linha é uma empresa cliente do sistema)
-create table if not exists companies (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  segment text,
-  email text,
-  notification_email text,
-  phone text,
-  cnpj text,
-  address text,
-  initials text,
-  created_at timestamptz not null default now()
-);
-
--- Categorias de produto (perecível, moda, livros, eletrônicos, outros...)
+-- ---------------------------------------------------------------------
+-- 2. Tabela de Categorias
+-- ---------------------------------------------------------------------
 create table if not exists categories (
   id text primary key,
   label text not null,
@@ -34,16 +33,53 @@ insert into categories (id, label, has_expiry) values
   ('outros', 'Outros', false)
 on conflict (id) do nothing;
 
--- Produtos
+-- ---------------------------------------------------------------------
+-- 3. Tabela de Empresas (Multi-tenant)
+-- ---------------------------------------------------------------------
+create table if not exists companies (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  segment text,
+  email text,
+  notification_email text not null,
+  phone text not null,
+  cnpj text not null unique,
+  address text,
+  initials text not null,
+  logo_url text,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------
+-- 4. Tabela de Perfis de Usuários (RBAC: admin vs operador)
+-- ---------------------------------------------------------------------
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  company_id uuid references companies(id) on delete set null,
+  full_name text,
+  email text,
+  role text not null default 'operador', -- 'admin' ou 'operador'
+  created_at timestamptz not null default now()
+);
+
+-- Garante que cada empresa possua NO MÁXIMO 1 usuário Administrador (o Dono/Proprietário que a cadastrou)
+create unique index if not exists idx_one_admin_per_company 
+  on profiles (company_id) 
+  where (role = 'admin');
+
+
+-- ---------------------------------------------------------------------
+-- 5. Tabela de Produtos
+-- ---------------------------------------------------------------------
 create table if not exists products (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
   code text not null,
   name text not null,
   category text not null references categories(id),
-  price numeric(12,2) not null default 0,
-  quantity integer not null default 0,
-  min_stock integer not null default 0,
+  price numeric(12,2) not null default 0 check (price >= 0 and price <= 1000000),
+  quantity integer not null default 0 check (quantity >= 0 and quantity <= 1000000),
+  min_stock integer not null default 0 check (min_stock >= 0 and min_stock <= 1000000),
   expiry date,
   supplier text,
   created_at timestamptz not null default now(),
@@ -55,15 +91,28 @@ create index if not exists idx_products_company on products(company_id);
 create index if not exists idx_products_expiry on products(expiry);
 create index if not exists idx_products_category on products(category);
 
--- Perfis de usuário, ligando auth.users a uma empresa (multi-empresa)
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  company_id uuid references companies(id) on delete set null,
-  full_name text,
+-- ---------------------------------------------------------------------
+-- 6. Tabela de Auditoria e Movimentações de Estoque
+-- ---------------------------------------------------------------------
+create table if not exists stock_movements (
+  id uuid primary key default uuid_generate_v4(),
+  company_id uuid not null references companies(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  changed_by uuid references profiles(id) on delete set null,
+  movement_type text not null check (movement_type in ('entrada', 'saida', 'ajuste')),
+  quantity_delta integer not null check (quantity_delta >= -1000000 and quantity_delta <= 1000000 and quantity_delta <> 0),
+  previous_quantity integer,
+  new_quantity integer,
+  note text,
   created_at timestamptz not null default now()
 );
 
--- Trigger simples para manter updated_at em dia
+create index if not exists idx_movements_company on stock_movements(company_id);
+create index if not exists idx_movements_product on stock_movements(product_id);
+
+-- ---------------------------------------------------------------------
+-- 7. Triggers de Atualização e Criação Automática de Perfil
+-- ---------------------------------------------------------------------
 create or replace function set_updated_at()
 returns trigger as $$
 begin
@@ -77,31 +126,165 @@ create trigger trg_products_updated_at
   before update on products
   for each row execute procedure set_updated_at();
 
--- =====================================================================
--- Row Level Security (RLS) — cada empresa só acessa seus próprios dados
--- =====================================================================
+-- Trigger para criar perfil automaticamente no Auth Sign-up
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', new.email),
+    'operador'
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      full_name = coalesce(excluded.full_name, profiles.full_name);
+  return new;
+end;
+$$ language plpgsql security definer;
 
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- ---------------------------------------------------------------------
+-- 8. Função Atômica RPC de Movimentação de Estoque
+-- ---------------------------------------------------------------------
+create or replace function apply_stock_movement(
+  p_product_id uuid,
+  p_movement_type text,
+  p_quantity_delta integer,
+  p_note text default null
+)
+returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  v_company_id uuid;
+  v_current_qty integer;
+  v_min_stock integer;
+  v_new_qty integer;
+  v_product_name text;
+  v_notification_email text;
+begin
+  if p_movement_type not in ('entrada', 'saida', 'ajuste') then
+    raise exception 'Tipo de movimentação inválido: %', p_movement_type;
+  end if;
+
+  select company_id, quantity, min_stock, name
+    into v_company_id, v_current_qty, v_min_stock, v_product_name
+  from products
+  where id = p_product_id;
+
+  if v_company_id is null then
+    raise exception 'Produto não encontrado ou sem permissão de acesso.';
+  end if;
+
+  v_new_qty := v_current_qty + p_quantity_delta;
+
+  if v_new_qty < 0 then
+    raise exception 'Quantidade insuficiente em estoque para essa movimentação (atual: %, tentativa: %).', v_current_qty, p_quantity_delta;
+  end if;
+
+  if v_new_qty > 1000000 then
+    raise exception 'A quantidade resultante de estoque (%) ultrapassa o limite permitido de 1.000.000.', v_new_qty;
+  end if;
+
+  update products set quantity = v_new_qty where id = p_product_id;
+
+  insert into stock_movements (
+    company_id, product_id, changed_by, movement_type, quantity_delta, previous_quantity, new_quantity, note
+  )
+  values (
+    v_company_id, p_product_id, auth.uid(), p_movement_type, p_quantity_delta, v_current_qty, v_new_qty, p_note
+  );
+
+  select notification_email into v_notification_email
+  from companies where id = v_company_id;
+
+  return jsonb_build_object(
+    'company_id', v_company_id,
+    'product_id', p_product_id,
+    'product_name', v_product_name,
+    'previous_quantity', v_current_qty,
+    'new_quantity', v_new_qty,
+    'min_stock', v_min_stock,
+    'crossed_low_stock', (v_current_qty > v_min_stock and v_new_qty <= v_min_stock),
+    'notification_email', v_notification_email
+  );
+end;
+$$;
+
+grant execute on function apply_stock_movement(uuid, text, integer, text) to authenticated;
+
+-- Helper function para obter o company_id do usuário logado sem recursão de RLS
+create or replace function public.get_auth_user_company_id()
+returns uuid
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select company_id from public.profiles where id = auth.uid();
+$$;
+
+grant execute on function public.get_auth_user_company_id() to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 9. Row Level Security (RLS) - Isolamento por Empresa
+-- ---------------------------------------------------------------------
 alter table companies enable row level security;
 alter table products enable row level security;
 alter table profiles enable row level security;
+alter table stock_movements enable row level security;
 
+-- Policies para Companies
+drop policy if exists "Usuários veem a própria empresa" on companies;
 create policy "Usuários veem a própria empresa"
   on companies for select
-  using (id in (select company_id from profiles where profiles.id = auth.uid()));
+  using (id = public.get_auth_user_company_id());
 
+drop policy if exists "Usuários atualizam a própria empresa" on companies;
 create policy "Usuários atualizam a própria empresa"
   on companies for update
-  using (id in (select company_id from profiles where profiles.id = auth.uid()));
+  using (id = public.get_auth_user_company_id());
 
+-- Policies para Products
+drop policy if exists "Usuários veem produtos da própria empresa" on products;
 create policy "Usuários veem produtos da própria empresa"
   on products for select
-  using (company_id in (select company_id from profiles where profiles.id = auth.uid()));
+  using (company_id = public.get_auth_user_company_id());
 
+drop policy if exists "Usuários gerenciam produtos da própria empresa" on products;
 create policy "Usuários gerenciam produtos da própria empresa"
   on products for all
-  using (company_id in (select company_id from profiles where profiles.id = auth.uid()))
-  with check (company_id in (select company_id from profiles where profiles.id = auth.uid()));
+  using (company_id = public.get_auth_user_company_id())
+  with check (company_id = public.get_auth_user_company_id());
 
-create policy "Usuários veem o próprio perfil"
+-- Policies para Profiles
+drop policy if exists "Usuários veem perfis da própria empresa" on profiles;
+create policy "Usuários veem perfis da própria empresa"
   on profiles for select
+  using (
+    id = auth.uid() 
+    or (company_id is not null and company_id = public.get_auth_user_company_id())
+  );
+
+drop policy if exists "Usuários atualizam o próprio perfil" on profiles;
+create policy "Usuários atualizam o próprio perfil"
+  on profiles for update
   using (id = auth.uid());
+
+-- Policies para Stock Movements
+drop policy if exists "Usuários veem movimentações da própria empresa" on stock_movements;
+create policy "Usuários veem movimentações da própria empresa"
+  on stock_movements for select
+  using (company_id = public.get_auth_user_company_id());
+
+drop policy if exists "Usuários registram movimentações na própria empresa" on stock_movements;
+create policy "Usuários registram movimentações na própria empresa"
+  on stock_movements for insert
+  with check (company_id = public.get_auth_user_company_id());

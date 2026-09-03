@@ -52,6 +52,10 @@ async function request(path, { method = "GET", body, params } = {}) {
     );
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const payload = isJson ? await response.json().catch(() => null) : null;
 
@@ -67,4 +71,6 @@ async function request(path, { method = "GET", body, params } = {}) {
 export const apiClient = {
   get: (path, params) => request(path, { method: "GET", params }),
   post: (path, body, params) => request(path, { method: "POST", body, params }),
+  patch: (path, body, params) => request(path, { method: "PATCH", body, params }),
+  delete: (path, params) => request(path, { method: "DELETE", params }),
 };

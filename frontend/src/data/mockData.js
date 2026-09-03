@@ -43,3 +43,10 @@ export const MOCK_COMPANY = {
   address: "Av. Nossa Senhora de Fátima, 1200 – Picos, PI",
   initials: "EB",
 };
+
+export const MOCK_MEMBERS = [
+  { id: "user-demo-1", fullName: "Carlos Silva (Proprietário)", email: "carlos.admin@emporioboasafra.com.br", role: "admin", createdAt: "2026-01-15T10:00:00Z" },
+  { id: "user-demo-2", fullName: "Mariana Souza", email: "mariana.operacoes@emporioboasafra.com.br", role: "operador", createdAt: "2026-02-01T14:30:00Z" },
+  { id: "user-demo-3", fullName: "João Pedro Santos", email: "joao.estoque@emporioboasafra.com.br", role: "operador", createdAt: "2026-02-10T09:15:00Z" },
+];
+

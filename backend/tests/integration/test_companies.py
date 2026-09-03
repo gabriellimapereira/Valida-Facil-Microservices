@@ -1,8 +1,6 @@
 """
 Testes de integração das rotas de empresa: onboarding (POST /companies),
-consulta (GET /companies/me) e convite de usuário (POST /companies/invite)
-— as duas primeiras usam a chave service_role, por isso precisam de um
-tratamento especial nos testes (ver comentário abaixo).
+consulta (GET /companies/me), membros (GET /companies/members) e convite de usuário (POST /companies/invite).
 """
 import app.routers.companies as companies_router
 
@@ -16,10 +14,6 @@ COMPANY_PAYLOAD = {
 
 
 def test_criar_empresa_com_sucesso(monkeypatch, make_test_client, fake_client, make_authed_user):
-    # companies.py chama service_client() diretamente (não via Depends),
-    # então o jeito de interceptar é sobrescrever o nome importado dentro
-    # do MÓDULO DA ROTA — sobrescrever app.core.supabase_client.service_client
-    # não teria efeito aqui, porque "from x import y" já copiou a referência.
     fake_client.tables["profiles"] = [{"id": "user-1", "company_id": None, "role": None}]
     monkeypatch.setattr(companies_router, "service_client", lambda: fake_client)
 
@@ -33,7 +27,6 @@ def test_criar_empresa_com_sucesso(monkeypatch, make_test_client, fake_client, m
     assert body["name"] == "Empório Boa Safra"
     assert body["initials"] == "EB"
 
-    # confirma que o profile do usuário foi vinculado como admin
     profile = fake_client.tables["profiles"][0]
     assert profile["company_id"] == body["id"]
     assert profile["role"] == "admin"
@@ -60,7 +53,6 @@ def test_criar_empresa_com_payload_incompleto_retorna_422(make_test_client, fake
     user = make_authed_user(fake_client, company_id=None)
     client = make_test_client(user=user)
 
-    # faltam campos obrigatórios: notification_email e initials
     response = client.post("/companies", json={"name": "Empório Boa Safra"})
 
     assert response.status_code == 422
@@ -129,9 +121,6 @@ def test_criar_empresa_aceita_cnpj_sem_pontuacao(monkeypatch, make_test_client, 
 
 
 def test_criar_empresa_com_cnpj_duplicado_retorna_409(monkeypatch, make_test_client, fake_client, make_authed_user):
-    # Simula o erro que o Postgres devolveria de verdade ao violar a
-    # constraint unique(cnpj) — sem depender do FakeQuery simular isso
-    # sozinho (ele não reproduz constraints do banco).
     class _RaisingCompaniesTable:
         def insert(self, _payload):
             return self
@@ -182,6 +171,23 @@ def test_get_my_company_404_sem_empresa_vinculada(make_test_client, fake_client,
     assert response.status_code == 404
 
 
+def test_list_company_members_retorna_membros(make_test_client, fake_client, make_authed_user):
+    company_id = "33333333-3333-3333-3333-333333333333"
+    fake_client.tables["profiles"] = [
+        {"id": "11111111-1111-1111-1111-111111111111", "company_id": company_id, "full_name": "Carlos Silva", "email": "carlos@empresa.com", "role": "admin", "created_at": "2026-01-01T00:00:00Z"},
+        {"id": "22222222-2222-2222-2222-222222222222", "company_id": company_id, "full_name": "Mariana Souza", "email": "mariana@empresa.com", "role": "operador", "created_at": "2026-01-02T00:00:00Z"},
+    ]
+    user = make_authed_user(fake_client, company_id=company_id)
+    client = make_test_client(user=user)
+
+    response = client.get("/companies/members")
+
+    assert response.status_code == 200
+    members = response.json()
+    assert len(members) == 2
+    assert members[0]["full_name"] == "Carlos Silva"
+
+
 class FakeInvitedUser:
     id = "new-user-1"
 
@@ -213,7 +219,7 @@ def test_convite_como_admin_funciona(monkeypatch, make_test_client, fake_client,
         json={"email": "novo@empresa.com", "full_name": "Novo Usuário", "role": "operador"},
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 201, response.json()
     body = response.json()
     assert body["user_id"] == "new-user-1"
 
@@ -238,10 +244,6 @@ def test_convite_com_falha_no_supabase_retorna_400(monkeypatch, make_test_client
 
 
 def test_convite_sem_autenticacao_retorna_401(make_test_client):
-    # O papel específico (admin vs operador) já é testado a fundo em
-    # tests/unit/test_security.py::TestRequireAdmin — aqui só confirmamos
-    # que a rota está mesmo protegida por ALGUMA autenticação (pega
-    # regressão tipo "esqueceram de colocar Depends(require_admin)").
     client = make_test_client()
 
     response = client.post(

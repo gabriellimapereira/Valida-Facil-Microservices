@@ -145,7 +145,7 @@ describe("LoginPage — esqueci minha senha", () => {
     await user.click(screen.getByRole("button", { name: /esqueci minha senha/i }));
     await user.click(screen.getByRole("button", { name: /voltar para o login/i }));
 
-    expect(screen.getByText(/bem-vindo de volta/i)).toBeInTheDocument();
+    expect(screen.getByText(/acesse sua conta/i)).toBeInTheDocument();
   });
 });
 

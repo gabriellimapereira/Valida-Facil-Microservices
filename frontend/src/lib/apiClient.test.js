@@ -129,4 +129,36 @@ describe("apiClient", () => {
 
     await expect(apiClient.get("/health")).resolves.toBeNull();
   });
+
+  it("executa requisições DELETE e trata status 204 No Content com retorno nulo", async () => {
+    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      headers: { get: () => null },
+    });
+
+    const result = await apiClient.delete("/companies/members/member-1");
+    expect(result).toBeNull();
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toContain("/companies/members/member-1");
+    expect(options.method).toBe("DELETE");
+  });
+
+  it("executa requisições PATCH com body", async () => {
+    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({ id: "member-1", role: "operador" }),
+    });
+
+    const result = await apiClient.patch("/companies/members/member-1", { role: "operador" });
+    expect(result).toEqual({ id: "member-1", role: "operador" });
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toContain("/companies/members/member-1");
+    expect(options.method).toBe("PATCH");
+    expect(JSON.parse(options.body)).toEqual({ role: "operador" });
+  });
 });

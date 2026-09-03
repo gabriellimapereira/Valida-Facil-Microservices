@@ -1,6 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Boxes, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldAlert, Layers } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  Boxes,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
+  FileText,
+  HelpCircle,
+  History,
+  Lock,
+  Mail,
+  MessageCircle,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
@@ -8,7 +24,7 @@ import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/P
 import TactileButton from "../components/ui/TactileButton";
 
 const Logo = ({ dark }) => (
-  <div className={`flex items-center gap-3 ${dark ? "" : "lg:hidden mb-8 justify-center"}`}>
+  <div className={`flex items-center gap-3 ${dark ? "" : "mb-6 justify-center"}`}>
     <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center shadow-sm">
       <Boxes size={22} className="text-white" />
     </div>
@@ -18,27 +34,108 @@ const Logo = ({ dark }) => (
 
 function BrandPanel() {
   return (
-    <div className="hidden lg:flex lg:w-1/2 bg-navy relative overflow-hidden flex-col justify-between p-12 lg:p-16 border-r border-slate-800">
-      <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-amber-600/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full bg-teal-500/10 blur-3xl -mb-20 -ml-20 pointer-events-none" />
-      
-      <div className="relative z-10"><Logo dark /></div>
-
-      <div className="relative z-10 max-w-lg">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-5">
-          <Layers size={13} />
-          Plataforma Multi-Empresa
-        </div>
-        <h1 className="text-white text-4xl font-bold leading-tight tracking-tight mb-4">
-          Controle inteligente de validade e estoque para sua empresa.
-        </h1>
-        <p className="text-slate-300 text-base leading-relaxed">
-          Evite perdas financeiras, gerencie produtos por categorias e acompanhe movimentações de estoque em um único painel corporativo.
-        </p>
+    <div className="hidden lg:block lg:w-1/2 h-screen overflow-y-auto bg-navy relative border-r border-slate-800 scroll-smooth">
+      {/* Dynamic ambient blur glows */}
+      <div className="sticky top-0 h-0 z-0 pointer-events-none">
+        <div className="absolute top-12 right-12 w-96 h-96 rounded-full bg-amber-600/10 blur-3xl" />
+        <div className="absolute top-96 left-12 w-80 h-80 rounded-full bg-teal-500/10 blur-3xl" />
+        <div className="absolute top-[800px] right-8 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl" />
       </div>
 
-      <div className="relative z-10 text-slate-400 text-xs">
-        © {new Date().getFullYear()} Valida Fácil • Gestão Empresarial de Estoque
+      <div className="relative z-10 p-10 lg:p-14">
+        {/* Section 1: Hero */}
+        <div className="min-h-[82vh] flex flex-col justify-between pt-2 pb-16">
+          <div><Logo dark /></div>
+
+          <div className="max-w-lg my-auto space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-amber-400 text-xs font-medium backdrop-blur-md">
+              <HelpCircle size={14} />
+              Tá precisando de ajuda para gerenciar seu estoque?
+            </div>
+
+            <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
+              Controle inteligente de validade e estoque para sua empresa.
+            </h1>
+
+            <p className="text-slate-300 text-base leading-relaxed">
+              Evite perdas financeiras por produtos vencidos, gerencie categorias e acompanhe movimentações de estoque em um único painel corporativo.
+            </p>
+
+            <div className="pt-2 flex items-center gap-4 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={16} className="text-teal-400" />
+                <span>Multi-usuários & RBAC</span>
+              </div>
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+              <div className="flex items-center gap-1.5">
+                <FileSpreadsheet size={16} className="text-amber-400" />
+                <span>Relatórios PDF & Excel</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-slate-400 text-xs flex items-center gap-2 pt-6">
+            <span>Role para conhecer mais recursos</span>
+            <ArrowDown size={14} className="animate-bounce text-amber-400" />
+          </div>
+        </div>
+
+        {/* Section 2: Relatórios & Auditoria */}
+        <div className="pt-16 pb-20">
+          <div className="max-w-lg mr-auto space-y-5 text-left bg-white/5 border border-white/10 p-7 rounded-3xl backdrop-blur-md shadow-xl transition transform hover:border-teal-500/30">
+            <h2 className="text-white text-2xl font-bold leading-snug">
+              Controle rigoroso de movimentações.
+            </h2>
+
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Tenha rastreabilidade em todas as operações de estoque. O sistema registra automaticamente qual colaborador realizou cada entrada, saída ou ajuste, mantendo o histórico de auditoria transparente e confiável.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                <History className="text-amber-400 mb-2" size={20} />
+                <h4 className="text-xs font-bold text-white">Rastreabilidade Total</h4>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">Saiba exatamente quem alterou cada produto e a quantidade.</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                <FileSpreadsheet className="text-teal-400 mb-2" size={20} />
+                <h4 className="text-xs font-bold text-white">Exportação Executiva</h4>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">Relatórios em PDF e Excel prontos para reuniões e fiscos.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: WhatsApp Contact (Com espaçamento equilibrado de 176px) */}
+        <div className="pt-44 pb-16">
+          <div className="max-w-lg ml-auto space-y-5 text-right bg-gradient-to-br from-emerald-950/40 to-slate-900/60 border border-emerald-500/20 p-7 rounded-3xl backdrop-blur-md shadow-xl transition transform hover:border-emerald-500/40">
+            <h2 className="text-white text-2xl font-bold leading-snug">
+              Fale com nossa equipe no WhatsApp.
+            </h2>
+
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Quer ajuda no cadastro da sua empresa, um plano sob medida ou esclarecer dúvidas operacionais? Atendemos você de forma rápida e direta.
+            </p>
+
+            <div className="pt-2 flex justify-end">
+              <a
+                href="https://wa.me/558894672031"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/50 transition transform hover:-translate-y-0.5 active:translate-y-0 select-none cursor-pointer"
+              >
+                <MessageCircle size={18} />
+                <span>Entrar em contato: (88) 94672-031</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="pt-16 border-t border-white/10 text-slate-400 text-xs flex items-center justify-between">
+          <span>© {new Date().getFullYear()} Valida Fácil</span>
+          <span>Gestão Empresarial de Estoque</span>
+        </div>
       </div>
     </div>
   );
@@ -156,7 +253,7 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 30;
 
 function LoginForm({ onForgotPassword }) {
-  const [email, setEmail] = useState("contato@emporioboasafra.com.br");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -219,16 +316,16 @@ function LoginForm({ onForgotPassword }) {
 
   return (
     <>
-      <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1">Bem-vindo de volta</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1">Acesse sua conta</h2>
       <p className="text-slate-500 text-sm mb-7">Acesse o painel da sua empresa para gerenciar o estoque.</p>
 
       <form onSubmit={submit} className="space-y-6">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-2.5">Usuário ou e-mail corporativo</label>
+          <label className="block text-xs font-semibold text-slate-700 mb-2.5">E-mail corporativo</label>
           <div className="relative">
             <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
-              type="text"
+              type="email"
               value={email}
               disabled={isLocked}
               onChange={(e) => setEmail(e.target.value)}
@@ -246,7 +343,7 @@ function LoginForm({ onForgotPassword }) {
             <button
               type="button"
               onClick={onForgotPassword}
-              className="text-xs font-semibold text-teal-600 hover:text-teal-700 transition cursor-pointer"
+              className="text-xs font-semibold text-red-600 hover:text-red-700 transition cursor-pointer"
             >
               Esqueci minha senha
             </button>
@@ -321,17 +418,76 @@ export default function LoginPage() {
   const [mode, setMode] = useState("login"); // "login" | "forgot"
 
   return (
-    <div className="min-h-screen w-full flex bg-slate-100">
+    <div className="min-h-screen w-full flex bg-slate-100 overflow-x-hidden">
+      {/* Desktop side panel */}
       <BrandPanel />
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 lg:p-12">
-        <div className="w-full max-w-md sm:bg-white sm:p-8 lg:p-10 sm:rounded-3xl sm:border sm:border-slate-200/80 sm:shadow-lg sm:shadow-slate-200/50">
-          <Logo />
-          {mode === "login" ? (
-            <LoginForm onForgotPassword={() => setMode("forgot")} />
-          ) : (
-            <ForgotPasswordForm onBack={() => setMode("login")} />
-          )}
+      {/* Main form container (Scrollable on mobile/tablet, centered on desktop) */}
+      <div className="flex-1 min-h-screen lg:h-screen lg:overflow-y-auto flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 bg-slate-100">
+        <div className="w-full max-w-md my-auto py-6 sm:py-8">
+          
+          {/* Mobile & Tablet Header (Intro text before login card) */}
+          <div className="lg:hidden text-center mb-8 px-2 space-y-3">
+            <Logo />
+            
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-semibold mx-auto">
+              <HelpCircle size={14} className="shrink-0 text-amber-600" />
+              <span>Tá precisando de ajuda para gerenciar seu estoque?</span>
+            </div>
+
+            <h1 className="text-slate-900 text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+              Controle inteligente de validade e estoque
+            </h1>
+
+            <p className="text-slate-600 text-xs sm:text-sm max-w-sm mx-auto leading-relaxed">
+              Evite perdas por vencimentos e acompanhe movimentações corporativas em tempo real.
+            </p>
+          </div>
+
+          {/* White Login / Reset Card */}
+          <div className="w-full bg-white p-6 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50">
+            <div className="hidden lg:block">
+              <Logo />
+            </div>
+
+            {mode === "login" ? (
+              <LoginForm onForgotPassword={() => setMode("forgot")} />
+            ) : (
+              <ForgotPasswordForm onBack={() => setMode("login")} />
+            )}
+          </div>
+
+          {/* Mobile & Tablet Feature Showcase Cards (Visible below login card on mobile) */}
+          <div className="lg:hidden mt-8 space-y-4 px-1">
+            <div className="bg-white/80 border border-slate-200/80 p-5 rounded-2xl shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-1">Controle rigoroso de movimentações</h3>
+              <p className="text-xs text-slate-600 leading-relaxed mb-3">
+                Rastreabilidade de colaboradores em entradas, saídas e ajustes, além de relatórios executivos em PDF e Excel.
+              </p>
+              <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium">
+                <span className="flex items-center gap-1"><History size={13} className="text-amber-600" /> Histórico auditável</span>
+                <span>•</span>
+                <span className="flex items-center gap-1"><FileSpreadsheet size={13} className="text-teal-600" /> Exportação 1-clique</span>
+              </div>
+            </div>
+
+            <div className="bg-emerald-900/90 text-white p-5 rounded-2xl shadow-md border border-emerald-800">
+              <h3 className="text-sm font-bold text-white mb-1">Fale com nossa equipe no WhatsApp</h3>
+              <p className="text-xs text-emerald-100/90 leading-relaxed mb-3">
+                Dúvidas ou precisa de um plano sob medida para seu negócio? Atendimento direto e rápido.
+              </p>
+              <a
+                href="https://wa.me/558894672031"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition active:scale-95 cursor-pointer"
+              >
+                <MessageCircle size={15} />
+                <span>WhatsApp: (88) 94672-031</span>
+              </a>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

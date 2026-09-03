@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/LoginPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+import SetPasswordPage from "../pages/SetPasswordPage";
 import OnboardingPage from "../pages/OnboardingPage";
 import DashboardPage from "../pages/DashboardPage";
 import StockPage from "../pages/StockPage";
@@ -35,6 +36,7 @@ export default function AppRoutes() {
          sessão de recuperação temporária, diferente do login normal — não
          faz sentido essa rota exigir "já estar logado" antes. */}
       <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+      <Route path="/definir-senha" element={<SetPasswordPage />} />
 
       <Route element={<PrivateRoute />}>
         {/* /onboarding fica fora do RequireCompany de propósito — é
