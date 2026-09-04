@@ -12,7 +12,6 @@ from typing import Any
 
 import pandas as pd
 from supabase import Client
-from weasyprint import HTML
 
 from app.data.categories import CATEGORY_LABELS
 from app.schemas.report import ReportFormat, ReportRequest, ReportType
@@ -346,6 +345,12 @@ def generate_report(
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     if request.format == ReportFormat.pdf:
+        try:
+            from weasyprint import HTML
+        except Exception as err:
+            raise RuntimeError(
+                f"Biblioteca de geração de PDF indisponível no ambiente de execução: {err}"
+            ) from err
         html_string = render(template, **ctx)
         content = HTML(string=html_string).write_pdf()
         filename = f"{slug}-{timestamp}.pdf"

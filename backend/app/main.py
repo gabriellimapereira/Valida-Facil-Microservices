@@ -14,10 +14,16 @@ _is_prod = settings.environment == "production"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_jobs()
-    scheduler.start()
+    try:
+        register_jobs()
+        scheduler.start()
+    except Exception as exc:
+        logging.warning("Scheduler não pôde ser iniciado em background: %s", exc)
     yield
-    scheduler.shutdown(wait=False)
+    try:
+        scheduler.shutdown(wait=False)
+    except Exception:
+        pass
 
 
 app = FastAPI(
