@@ -5,36 +5,67 @@ vi.mock("../lib/apiClient", () => ({
   apiClient: { post: (...args) => mockPost(...args) },
 }));
 
+vi.mock("../lib/supabaseClient", () => ({
+  isSupabaseConfigured: false,
+  supabase: null,
+}));
+
 import { generateReport } from "./reportService";
 
 beforeEach(() => {
   mockPost.mockReset();
+  global.URL.createObjectURL = vi.fn(() => "blob:http://localhost/fake-pdf");
+  global.URL.revokeObjectURL = vi.fn();
 });
 
 describe("generateReport", () => {
-  it("envia o payload certo e usa 'pdf' como formato padrão", async () => {
-    mockPost.mockResolvedValue({ url: "https://storage.fake/x.pdf", filename: "x.pdf", expires_in_seconds: 600 });
+  it("gera PDF 100% no frontend por padrão sem chamar o backend", async () => {
+    const result = await generateReport({ reportType: "estoque_atual" });
 
-    await generateReport({ reportType: "estoque_atual" });
-
-    expect(mockPost).toHaveBeenCalledWith("/reports/generate", {
-      report_type: "estoque_atual",
-      format: "pdf",
-      date_from: undefined,
-      date_to: undefined,
-      expiry_window_days: undefined,
-    });
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(result.url).toMatch(/^blob:/);
+    expect(result.filename).toMatch(/^estoque_atual-.*\.pdf$/);
+    expect(result.expiresInSeconds).toBe(3600);
   });
 
-  it("repassa datas e janela de validade quando informadas", async () => {
-    mockPost.mockResolvedValue({ url: "u", filename: "f", expires_in_seconds: 600 });
+  it("gera relatório de produtos_a_vencer no frontend", async () => {
+    const result = await generateReport({
+      reportType: "produtos_a_vencer",
+      expiryWindowDays: 30,
+    });
 
-    await generateReport({
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(result.filename).toMatch(/^produtos_a_vencer-.*\.pdf$/);
+  });
+
+  it("gera relatórios de movimentações e giro de estoque no frontend", async () => {
+    const resultMov = await generateReport({
+      reportType: "movimentacoes",
+      dateFrom: "2026-08-01",
+      dateTo: "2026-08-20",
+    });
+    expect(resultMov.filename).toMatch(/^movimentacoes-.*\.pdf$/);
+
+    const resultGiro = await generateReport({
+      reportType: "giro_estoque",
+      dateFrom: "2026-08-01",
+      dateTo: "2026-08-20",
+    });
+    expect(resultGiro.filename).toMatch(/^giro_estoque-.*\.pdf$/);
+  });
+
+  it("repassa formato xlsx para o backend quando solicitado", async () => {
+    mockPost.mockResolvedValue({
+      url: "https://storage.fake/mov.xlsx",
+      filename: "mov.xlsx",
+      expires_in_seconds: 600,
+    });
+
+    const result = await generateReport({
       reportType: "movimentacoes",
       format: "xlsx",
       dateFrom: "2026-08-01",
       dateTo: "2026-08-20",
-      expiryWindowDays: 30,
     });
 
     expect(mockPost).toHaveBeenCalledWith("/reports/generate", {
@@ -42,31 +73,8 @@ describe("generateReport", () => {
       format: "xlsx",
       date_from: "2026-08-01",
       date_to: "2026-08-20",
-      expiry_window_days: 30,
+      expiry_window_days: 15,
     });
-  });
-
-  it("remapeia a resposta pra camelCase", async () => {
-    mockPost.mockResolvedValue({
-      url: "https://storage.fake/relatorio.pdf",
-      filename: "estoque_atual-20260820.pdf",
-      expires_in_seconds: 600,
-    });
-
-    const result = await generateReport({ reportType: "estoque_atual" });
-
-    expect(result).toEqual({
-      url: "https://storage.fake/relatorio.pdf",
-      filename: "estoque_atual-20260820.pdf",
-      expiresInSeconds: 600,
-    });
-  });
-
-  it("propaga erro do backend", async () => {
-    mockPost.mockRejectedValue(new Error("Falha ao gerar relatório: sem dados no período."));
-
-    await expect(generateReport({ reportType: "movimentacoes" })).rejects.toThrow(
-      "Falha ao gerar relatório: sem dados no período."
-    );
+    expect(result.filename).toBe("mov.xlsx");
   });
 });
