@@ -27,7 +27,10 @@ async function request(path, { method = "GET", body, params } = {}) {
     throw new Error("Sessão expirada. Faça login novamente para continuar.");
   }
 
-  const url = new URL(API_BASE_URL + path);
+  const base = API_BASE_URL.startsWith("http://") || API_BASE_URL.startsWith("https://")
+    ? API_BASE_URL.replace(/\/$/, "")
+    : (typeof window !== "undefined" && window.location?.origin ? window.location.origin : "http://localhost:8000") + (API_BASE_URL.startsWith("/") ? API_BASE_URL : `/${API_BASE_URL}`).replace(/\/$/, "");
+  const url = new URL(base + path);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {

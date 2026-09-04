@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -70,13 +70,19 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-app.include_router(companies.router, prefix="/companies", tags=["Empresas"])
-app.include_router(movements.router, prefix="/movements", tags=["Movimentações"])
-app.include_router(alerts.router, prefix="/alerts", tags=["Alertas"])
-app.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
+api_router = APIRouter()
+api_router.include_router(companies.router, prefix="/companies", tags=["Empresas"])
+api_router.include_router(movements.router, prefix="/movements", tags=["Movimentações"])
+api_router.include_router(alerts.router, prefix="/alerts", tags=["Alertas"])
+api_router.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
 
 
-@app.get("/health", tags=["Status"])
+@api_router.get("/health", tags=["Status"])
 def health():
     # Não expõe detalhes do ambiente para não vazar informações de configuração
     return {"status": "ok"}
+
+
+# Suporta tanto chamadas diretas quanto via rewrites do Vercel/proxies (/api/...)
+app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
