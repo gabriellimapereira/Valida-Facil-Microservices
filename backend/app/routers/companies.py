@@ -1,6 +1,7 @@
 """
 Onboarding de empresa, gestão de equipe (membros) e convite de usuários.
 """
+import logging
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,7 @@ from app.schemas.company import (
     UpdateMemberRoleRequest,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -41,7 +43,8 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Já existe uma empresa cadastrada com esse CNPJ.",
             )
-        raise HTTPException(status_code=500, detail=f"Não foi possível criar a empresa: {exc}")
+        logger.exception("Falha ao criar empresa para usuário %s", user.id)
+        raise HTTPException(status_code=500, detail="Não foi possível criar a empresa.")
 
     if not company_resp.data:
         raise HTTPException(status_code=500, detail="Não foi possível criar a empresa.")
@@ -71,6 +74,7 @@ async def list_company_members(user: AuthedUser = Depends(get_current_user_with_
         user.client.table("profiles")
         .select("id, full_name, email, role, created_at")
         .eq("company_id", user.company_id)
+        .order("created_at")
         .execute()
     )
     return resp.data or []
@@ -111,13 +115,15 @@ async def invite_user(payload: InviteUserRequest, user: AuthedUser = Depends(req
                 "redirect_to": f"{settings.frontend_url}/definir-senha",
             },
         )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Não foi possível convidar o usuário: {exc}")
+    except Exception:
+        logger.exception("Falha ao convidar usuário %s para empresa %s", payload.email, user.company_id)
+        raise HTTPException(status_code=400, detail="Não foi possível enviar o convite. Verifique o e-mail e tente novamente.")
 
     new_user = getattr(created, "user", None)
     if not new_user:
         raise HTTPException(status_code=500, detail="Convite não retornou um usuário válido.")
 
+    # O role é sempre "operador" para convidados — admins são promovidos explicitamente depois
     admin_client.table("profiles").update(
         {"company_id": user.company_id, "role": "operador", "full_name": payload.full_name, "email": payload.email}
     ).eq("id", new_user.id).execute()
@@ -168,6 +174,10 @@ async def remove_member(member_id: UUID, user: AuthedUser = Depends(require_admi
     try:
         admin_client.auth.admin.delete_user(str(member_id))
     except Exception:
+        # Se a exclusão do Auth falhar, desvincular o perfil da empresa em vez de
+        # silenciar o erro — o usuário ficará sem empresa mas ainda poderá fazer login.
+        # Loga o ocorrido para investigação posterior.
+        logger.exception("Falha ao excluir usuário %s do Supabase Auth; desvinculando perfil", member_id)
         admin_client.table("profiles").update({"company_id": None, "role": "operador"}).eq("id", str(member_id)).execute()
 
     return None

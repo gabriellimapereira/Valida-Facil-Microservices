@@ -140,6 +140,30 @@ export async function fetchCompanyMembers(companyId) {
   if (!isSupabaseConfigured) {
     return Promise.resolve([...memoryMembers]);
   }
+  if (!companyId) return [];
+
+  // 1. Tenta consulta direta no Supabase (instantânea com RLS)
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, role, created_at")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data.map((row) => ({
+        id: row.id,
+        fullName: row.full_name || row.email,
+        email: row.email,
+        role: row.role,
+        createdAt: row.created_at,
+      }));
+    }
+  } catch (err) {
+    console.warn("Consulta direta de colaboradores falhou, usando fallback da API:", err);
+  }
+
+  // 2. Fallback via backend se necessário
   return apiClient.get("/companies/members");
 }
 

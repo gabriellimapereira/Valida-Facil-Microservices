@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
-import ProductModal from "./ProductModal";
+import ProductModal, { generateNextProductCode } from "./ProductModal";
 
 describe("ProductModal", () => {
   it("valida campos obrigatórios ao submeter formulário vazio", async () => {
@@ -90,6 +90,48 @@ describe("ProductModal", () => {
     expect(
       screen.getByText(/use "Registrar movimentação" na tabela/i)
     ).toBeInTheDocument();
+  });
+
+  describe("geração automática de código / ID", () => {
+    it("gera ALM-0001 quando não há produtos cadastrados para alimentos perecíveis", () => {
+      const code = generateNextProductCode("perecivel", []);
+      expect(code).toBe("ALM-0001");
+    });
+
+    it("incrementa sequencialmente respeitando o maior número existente do prefixo", () => {
+      const existing = [
+        { code: "ALM-0001" },
+        { code: "ALM-0002" },
+        { code: "ALM-0010" },
+      ];
+      const code = generateNextProductCode("perecivel", existing);
+      expect(code).toBe("ALM-0011");
+    });
+
+    it("gera prefixos adequados para outras categorias", () => {
+      expect(generateNextProductCode("eletronicos", [])).toBe("ELE-0001");
+      expect(generateNextProductCode("moda", [])).toBe("MOD-0001");
+      expect(generateNextProductCode("livros", [])).toBe("LIV-0001");
+      expect(generateNextProductCode("outros", [])).toBe("PRD-0001");
+    });
+
+    it("preenche o input ao clicar no botão 'Gerar automático' no modal", () => {
+      const existing = [{ code: "ALM-0001" }];
+      render(<ProductModal product={null} existingProducts={existing} onClose={vi.fn()} onSave={vi.fn()} />);
+
+      const autoBtn = screen.getByRole("button", { name: /Gerar automático/i });
+      fireEvent.click(autoBtn);
+
+      const codeInput = screen.getByDisplayValue("ALM-0002");
+      expect(codeInput).toBeInTheDocument();
+    });
+
+    it("não exibe o botão 'Gerar automático' no modo de edição", () => {
+      const existing = { id: "1", code: "ALM-0001", name: "Leite", category: "perecivel", price: 5, quantity: 10 };
+      render(<ProductModal product={existing} onClose={vi.fn()} onSave={vi.fn()} />);
+
+      expect(screen.queryByRole("button", { name: /Gerar automático/i })).not.toBeInTheDocument();
+    });
   });
 });
 

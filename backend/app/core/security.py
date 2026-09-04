@@ -28,6 +28,7 @@ class AuthedUser:
     role: Optional[str]
     access_token: str
     client: Client  # já autenticado como este usuário — respeita RLS
+    full_name: Optional[str] = None
 
 
 def _extract_bearer_token(authorization: Optional[str]) -> str:
@@ -74,6 +75,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
         email=user.email,
         company_id=profile_data.get("company_id"),
         role=profile_data.get("role"),
+        full_name=profile_data.get("full_name"),
         access_token=token,
         client=client,
     )

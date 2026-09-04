@@ -10,6 +10,7 @@ from app.routers import alerts, companies, movements, reports
 
 logging.basicConfig(level=logging.INFO)
 
+_is_prod = settings.environment == "production"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,25 +27,32 @@ app = FastAPI(
     "e geração de relatórios em PDF/Excel.",
     version="1.0.0",
     lifespan=lifespan,
+    # Desabilitar documentação interativa em produção para não expor o schema da API
+    docs_url="/docs" if not _is_prod else None,
+    redoc_url="/redoc" if not _is_prod else None,
+    openapi_url="/openapi.json" if not _is_prod else None,
 )
 
-# Configuração CORS abrangente para aceitar preflights OPTIONS de qualquer porta local / frontend
+# Em produção, aceitar apenas o domínio configurado em FRONTEND_URL.
+# Em desenvolvimento, aceitar qualquer localhost para facilitar o trabalho local.
+_local_origins = [
+    settings.frontend_url,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=[settings.frontend_url] if _is_prod else _local_origins,
+    allow_origin_regex=None if _is_prod else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -55,6 +63,10 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # HSTS só faz sentido em produção com HTTPS
+    if _is_prod:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -66,4 +78,5 @@ app.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
 
 @app.get("/health", tags=["Status"])
 def health():
-    return {"status": "ok", "environment": settings.environment}
+    # Não expõe detalhes do ambiente para não vazar informações de configuração
+    return {"status": "ok"}

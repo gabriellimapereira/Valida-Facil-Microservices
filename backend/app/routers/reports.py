@@ -3,6 +3,8 @@ Geração de relatórios sob demanda. Fluxo: busca dados (RLS garante que só
 vem da empresa do usuário) -> agrega com pandas -> gera PDF ->
 sobe pro Storage -> devolve link assinado de curta duração.
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.security import AuthedUser, get_current_user_with_company
@@ -10,6 +12,7 @@ from app.schemas.report import ReportRequest, ReportResponse
 from app.services import report_service, storage_service
 from app.services.storage_service import SIGNED_URL_EXPIRES_IN
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -22,21 +25,20 @@ async def generate_report(payload: ReportRequest, user: AuthedUser = Depends(get
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
     company_data = company_resp.data
 
-    profile_resp = user.client.table("profiles").select("full_name").eq("id", user.id).maybe_single().execute()
-    responsible_name = (profile_resp.data or {}).get("full_name") if profile_resp and profile_resp.data else None
-    company_data["responsible_name"] = responsible_name
+    company_data["responsible_name"] = user.full_name or "Responsável pelo Estoque"
 
     try:
         content, filename, content_type = report_service.generate_report(
             user.client, company_data, payload
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Falha ao gerar relatório: {exc}")
+    except Exception:
+        logger.exception("Falha ao gerar relatório para empresa %s", user.company_id)
+        raise HTTPException(status_code=500, detail="Falha ao renderizar relatório. Tente novamente mais tarde.")
 
     try:
         url = storage_service.upload_and_sign(user.client, user.company_id, filename, content, content_type)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Falha ao salvar relatório no Storage: {exc}")
+    except Exception:
+        logger.exception("Falha ao salvar relatório no Storage para empresa %s", user.company_id)
+        raise HTTPException(status_code=500, detail="Falha ao salvar relatório no Storage.")
 
     return ReportResponse(url=url, filename=filename, expires_in_seconds=SIGNED_URL_EXPIRES_IN)
-

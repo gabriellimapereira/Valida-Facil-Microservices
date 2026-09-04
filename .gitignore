@@ -19,3 +19,11 @@ coverage/
 
 fix.txt
 roteiro.md
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+dist/
+frontend/dist/

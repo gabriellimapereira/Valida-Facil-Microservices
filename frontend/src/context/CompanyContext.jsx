@@ -17,12 +17,21 @@ export function CompanyProvider({ children }) {
     }
     let mounted = true;
     setLoading(true);
-    companyService.fetchCompany(companyId).then((data) => {
-      if (mounted) {
-        setCompany(data);
-        setLoading(false);
-      }
-    });
+    companyService
+      .fetchCompany(companyId)
+      .then((data) => {
+        if (mounted) {
+          setCompany(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar dados da empresa:", err);
+        if (mounted) {
+          setCompany(null);
+          setLoading(false);
+        }
+      });
     return () => {
       mounted = false;
     };

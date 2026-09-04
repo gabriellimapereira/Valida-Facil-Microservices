@@ -16,14 +16,11 @@ qualquer bug aqui pode furar o isolamento entre empresas. Regra de ouro:
   movimentação de estoque — porque assim o isolamento entre empresas é
   garantido pelo banco, não por lógica do backend.
 """
-from functools import lru_cache
-
 from supabase import Client, create_client
 
 from app.config import settings
 
 
-@lru_cache
 def service_client() -> Client:
     return create_client(settings.supabase_url, settings.supabase_service_role_key)
 

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import * as productService from "../services/productService";
 import { useAuth } from "./AuthContext";
 
-const ProductContext = createContext(null);
+export const ProductContext = createContext(null);
 
 export function ProductProvider({ children }) {
   const { companyId, isAuthenticated } = useAuth();
@@ -17,12 +17,21 @@ export function ProductProvider({ children }) {
     }
     let mounted = true;
     setLoading(true);
-    productService.fetchProducts(companyId).then((data) => {
-      if (mounted) {
-        setProducts(data);
-        setLoading(false);
-      }
-    });
+    productService
+      .fetchProducts(companyId)
+      .then((data) => {
+        if (mounted) {
+          setProducts(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar produtos:", err);
+        if (mounted) {
+          setProducts([]);
+          setLoading(false);
+        }
+      });
     return () => {
       mounted = false;
     };

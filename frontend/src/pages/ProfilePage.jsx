@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const { company, saveCompany } = useCompany();
   const { addToast } = useToast();
 
-  const isAdmin = role !== "operador";
+  const isAdmin = role === "admin";
 
   const [form, setForm] = useState(null);
   const [pw, setPw] = useState({ current: "" });

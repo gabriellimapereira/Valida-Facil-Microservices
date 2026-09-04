@@ -29,11 +29,8 @@ def upload_and_sign(client: Client, company_id: str, filename: str, content: byt
     # O backend gera o relatório após validar o token e a empresa do usuário.
     # O upload no Storage é feito via service_client (com service_role) para garantir
     # escrita no bucket privado, e a entrega é feita por Signed URL temporária (10 min).
-    try:
-        admin_client = service_client()
-        bucket = admin_client.storage.from_(settings.reports_bucket)
-    except Exception:
-        bucket = client.storage.from_(settings.reports_bucket)
+    admin_client = service_client()
+    bucket = admin_client.storage.from_(settings.reports_bucket)
 
     try:
         bucket.upload(

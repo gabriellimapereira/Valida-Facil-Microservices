@@ -1,14 +1,55 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { createPortal } from "react-dom";
-import { Boxes, PackagePlus, X } from "lucide-react";
+import { Boxes, PackagePlus, Sparkles, X } from "lucide-react";
 import { CATEGORIES } from "../../data/categories";
+import { ProductContext } from "../../context/ProductContext";
 import TactileButton from "../ui/TactileButton";
 import DatePicker from "../ui/DatePicker";
 
 const MAX_VALUE = 1_000_000;
 
-export default function ProductModal({ product, onClose, onSave }) {
+export const CATEGORY_PREFIXES = {
+  perecivel: "ALM",
+  eletronicos: "ELE",
+  moda: "MOD",
+  livros: "LIV",
+  outros: "PRD",
+};
+
+export function generateNextProductCode(category = "perecivel", existingProducts = []) {
+  const prefix = CATEGORY_PREFIXES[category] || "PRD";
+  const regex = new RegExp(`^${prefix}-(\\d+)$`, "i");
+
+  let maxNum = 0;
+  const existingSet = new Set();
+
+  for (const p of existingProducts || []) {
+    if (!p?.code) continue;
+    existingSet.add(p.code.toUpperCase());
+    const match = p.code.match(regex);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  let candidate = maxNum + 1;
+  let code = `${prefix}-${String(candidate).padStart(4, "0")}`;
+  while (existingSet.has(code.toUpperCase())) {
+    candidate++;
+    code = `${prefix}-${String(candidate).padStart(4, "0")}`;
+  }
+
+  return code;
+}
+
+export default function ProductModal({ product, onClose, onSave, existingProducts = [] }) {
   const isEdit = Boolean(product);
+  const productContext = useContext(ProductContext);
+  const allProducts = existingProducts.length > 0 ? existingProducts : (productContext?.products || []);
+
   const [form, setForm] = useState({
     code: product?.code || "",
     name: product?.name || "",
@@ -20,6 +61,11 @@ export default function ProductModal({ product, onClose, onSave }) {
     supplier: product?.supplier || "",
   });
   const [errors, setErrors] = useState({});
+
+  const handleGenerateCode = () => {
+    const nextCode = generateNextProductCode(form.category, allProducts);
+    set("code", nextCode);
+  };
 
   const set = (k, v) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -163,7 +209,22 @@ export default function ProductModal({ product, onClose, onSave }) {
         <form onSubmit={submit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Código / ID <span className="text-amber-600">*</span></label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Código / ID <span className="text-amber-600">*</span>
+                </label>
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateCode}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-2 py-0.5 rounded-md transition select-none cursor-pointer"
+                    title="Atribuir código sequencial automático para este produto"
+                  >
+                    <Sparkles size={12} className="text-amber-600" />
+                    <span>Gerar automático</span>
+                  </button>
+                )}
+              </div>
               <input
                 value={form.code}
                 onChange={(e) => set("code", e.target.value)}

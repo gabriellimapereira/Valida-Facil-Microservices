@@ -18,6 +18,7 @@ export default function ReportModal({ onClose, onSubmit }) {
   const [expiryWindowDays, setExpiryWindowDays] = useState(15);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [stepLabel, setStepLabel] = useState("Gerando PDF...");
 
   const usesDateRange = reportType === "movimentacoes" || reportType === "giro_estoque";
   const usesExpiryWindow = reportType === "produtos_a_vencer";
@@ -62,6 +63,10 @@ export default function ReportModal({ onClose, onSubmit }) {
     }
 
     setSubmitting(true);
+    setStepLabel("Processando estoque...");
+    const t1 = setTimeout(() => setStepLabel("Renderizando PDF..."), 1200);
+    const t2 = setTimeout(() => setStepLabel("Finalizando download..."), 3500);
+
     try {
       await onSubmit({
         reportType,
@@ -74,6 +79,8 @@ export default function ReportModal({ onClose, onSubmit }) {
     } catch (err) {
       setError(err.message || "Não foi possível gerar o relatório em PDF.");
     } finally {
+      clearTimeout(t1);
+      clearTimeout(t2);
       setSubmitting(false);
     }
   };
@@ -185,13 +192,6 @@ export default function ReportModal({ onClose, onSubmit }) {
             </div>
           )}
 
-          <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 flex items-center gap-3 text-xs text-slate-600">
-            <div className="w-6 h-6 rounded-md bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0 font-bold">
-              PDF
-            </div>
-            <span>O arquivo será gerado com o cabeçalho oficial e layout institucional do <strong>Valida Fácil</strong>.</span>
-          </div>
-
           {error && (
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
               {error}
@@ -219,7 +219,7 @@ export default function ReportModal({ onClose, onSubmit }) {
               {submitting ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Gerando PDF...</span>
+                  <span>{stepLabel}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">

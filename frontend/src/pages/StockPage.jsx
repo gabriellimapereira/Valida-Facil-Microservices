@@ -178,30 +178,26 @@ export default function StockPage() {
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Gestão de estoque</h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{filtered.length} produto(s) encontrado(s)</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <TactileButton
             variant="secondary"
             onClick={() => setReportModalOpen(true)}
-            padding="9px 12px sm:px-4"
+            padding="10px 20px"
             rounded={12}
             className="w-full sm:w-auto"
           >
-            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold">
-              <FileDown size={15} />
-              <span className="truncate">Relatório</span>
-            </div>
+            <FileDown size={17} className="mr-1.5 shrink-0" />
+            Gerar relatório
           </TactileButton>
           <TactileButton
             variant="amber"
             onClick={() => { setEditing(null); setModalOpen(true); }}
-            padding="9px 12px sm:px-4"
+            padding="10px 20px"
             rounded={12}
             className="w-full sm:w-auto"
           >
-            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold">
-              <Plus size={15} />
-              <span className="truncate">Novo produto</span>
-            </div>
+            <Plus size={17} className="mr-1.5 shrink-0" />
+            Novo produto
           </TactileButton>
         </div>
       </div>
@@ -237,6 +233,7 @@ export default function StockPage() {
         <ProductModal
           key={editing?.id || "new"}
           product={editing}
+          existingProducts={products}
           onClose={() => { setModalOpen(false); setEditing(null); }}
           onSave={handleSave}
         />

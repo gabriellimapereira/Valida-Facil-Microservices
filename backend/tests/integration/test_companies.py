@@ -9,7 +9,7 @@ COMPANY_PAYLOAD = {
     "notification_email": "estoque@empresa.com",
     "initials": "EB",
     "phone": "(89) 3222-4455",
-    "cnpj": "12.345.678/0001-90",
+    "cnpj": "11.222.333/0001-81",
 }
 
 
@@ -115,9 +115,19 @@ def test_criar_empresa_aceita_cnpj_sem_pontuacao(monkeypatch, make_test_client, 
     user = make_authed_user(fake_client, company_id=None, user_id="user-1")
     client = make_test_client(user=user)
 
-    response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "12345678000190"})
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "11222333000181"})
 
     assert response.status_code == 201
+
+
+def test_criar_empresa_com_digitos_verificadores_invalidos_retorna_422(make_test_client, fake_client, make_authed_user):
+    user = make_authed_user(fake_client, company_id=None)
+    client = make_test_client(user=user)
+
+    response = client.post("/companies", json={**COMPANY_PAYLOAD, "cnpj": "11.222.333/0001-99"})
+
+    assert response.status_code == 422
+    assert "dígitos verificadores" in response.text
 
 
 def test_criar_empresa_com_cnpj_duplicado_retorna_409(monkeypatch, make_test_client, fake_client, make_authed_user):

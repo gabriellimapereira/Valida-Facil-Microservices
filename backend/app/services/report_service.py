@@ -52,7 +52,14 @@ def _fmt_datetime(iso: str | None) -> str:
 # --------------------------------------------------------------------- #
 
 def _fetch_products(client: Client) -> list[dict]:
-    return client.table("products").select("*").order("name").execute().data or []
+    return (
+        client.table("products")
+        .select("name, code, category, quantity, min_stock, price, expiry")
+        .order("name")
+        .execute()
+        .data
+        or []
+    )
 
 
 def _fetch_movements(client: Client, date_from: date | None, date_to: date | None) -> list[dict]:
