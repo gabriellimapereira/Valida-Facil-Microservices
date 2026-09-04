@@ -14,6 +14,26 @@ export default function ProductFilters({
 }) {
   const set = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
 
+  const handleDateFromChange = (e) => {
+    const val = e.target.value;
+    setFilters((prev) => {
+      const shouldResetDateTo = prev.dateTo && val && prev.dateTo < val;
+      return {
+        ...prev,
+        dateFrom: val,
+        dateTo: shouldResetDateTo ? "" : prev.dateTo,
+      };
+    });
+  };
+
+  const handleDateToChange = (e) => {
+    const val = e.target.value;
+    if (val && filters.dateFrom && val < filters.dateFrom) {
+      return;
+    }
+    set("dateTo", val);
+  };
+
   const categoryLabel = CATEGORIES.find((c) => c.id === filters.category)?.label;
 
   return (
@@ -147,7 +167,7 @@ export default function ProductFilters({
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Validade – a partir de</label>
             <DatePicker
               value={filters.dateFrom}
-              onChange={(e) => set("dateFrom", e.target.value)}
+              onChange={handleDateFromChange}
               placeholder="dd/mm/aaaa"
             />
           </div>
@@ -155,9 +175,15 @@ export default function ProductFilters({
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Validade – até</label>
             <DatePicker
               value={filters.dateTo}
-              onChange={(e) => set("dateTo", e.target.value)}
+              onChange={handleDateToChange}
+              min={filters.dateFrom || undefined}
               placeholder="dd/mm/aaaa"
             />
+            {filters.dateFrom && (
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Mínimo: {fmtDate(filters.dateFrom)}
+              </span>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1.5">Ordenar por valor</label>

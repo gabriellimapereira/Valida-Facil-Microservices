@@ -43,11 +43,26 @@ export default function DatePicker({
   const [coords, setCoords] = useState({ top: 0, left: 0, openUpward: false });
 
   // Data de referência de visualização do calendário (mês/ano)
-  const initialDate = value ? new Date(`${value}T00:00:00`) : new Date();
+  const getInitialViewDate = () => {
+    if (value && typeof value === "string" && value.includes("-")) {
+      const d = new Date(`${value}T00:00:00`);
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (min && typeof min === "string" && min.includes("-")) {
+      const minDate = new Date(`${min}T00:00:00`);
+      const now = new Date();
+      if (!isNaN(minDate.getTime()) && now < minDate) {
+        return minDate;
+      }
+    }
+    return new Date();
+  };
+
+  const initialDate = getInitialViewDate();
   const [viewYear, setViewYear] = useState(initialDate.getFullYear() || new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth() || new Date().getMonth());
 
-  // Atualiza o mês exibido se o valor externo mudar
+  // Atualiza o mês exibido se o valor externo ou limite mínimo mudar
   useEffect(() => {
     if (value && typeof value === "string" && value.includes("-")) {
       const [y, m] = value.split("-").map(Number);
@@ -55,8 +70,16 @@ export default function DatePicker({
         setViewYear(y);
         setViewMonth(m - 1);
       }
+    } else if (min && typeof min === "string" && min.includes("-")) {
+      const [minY, minM] = min.split("-").map(Number);
+      if (!isNaN(minY) && !isNaN(minM)) {
+        if (viewYear < minY || (viewYear === minY && viewMonth < minM - 1)) {
+          setViewYear(minY);
+          setViewMonth(minM - 1);
+        }
+      }
     }
-  }, [value]);
+  }, [value, min]);
 
   // Calcula a posição na tela (fixed) ancorada no gatilho
   const computePosition = () => {
@@ -139,8 +162,29 @@ export default function DatePicker({
     };
   }, [isOpen]);
 
+  let isPrevMonthDisabled = false;
+  if (min && typeof min === "string" && min.includes("-")) {
+    const [minY, minM] = min.split("-").map(Number);
+    if (!isNaN(minY) && !isNaN(minM)) {
+      if (viewYear < minY || (viewYear === minY && viewMonth <= minM - 1)) {
+        isPrevMonthDisabled = true;
+      }
+    }
+  }
+
+  let isNextMonthDisabled = false;
+  if (max && typeof max === "string" && max.includes("-")) {
+    const [maxY, maxM] = max.split("-").map(Number);
+    if (!isNaN(maxY) && !isNaN(maxM)) {
+      if (viewYear > maxY || (viewYear === maxY && viewMonth >= maxM - 1)) {
+        isNextMonthDisabled = true;
+      }
+    }
+  }
+
   const handlePrevMonth = (e) => {
     e.stopPropagation();
+    if (isPrevMonthDisabled) return;
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((y) => y - 1);
@@ -151,6 +195,7 @@ export default function DatePicker({
 
   const handleNextMonth = (e) => {
     e.stopPropagation();
+    if (isNextMonthDisabled) return;
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear((y) => y + 1);
@@ -161,6 +206,8 @@ export default function DatePicker({
 
   const handleSelectDate = (year, month, day) => {
     const isoString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (min && isoString < min) return;
+    if (max && isoString > max) return;
     if (onChange) {
       onChange({ target: { value: isoString, name, id } });
     }
@@ -175,10 +222,17 @@ export default function DatePicker({
     setIsOpen(false);
   };
 
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const isTodayDisabled = Boolean((min && todayIso < min) || (max && todayIso > max));
+
   const handleSelectToday = (e) => {
     e.stopPropagation();
-    const today = new Date();
+    if (isTodayDisabled) return;
     const isoString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (min && isoString < min) return;
+    if (max && isoString > max) return;
     if (onChange) {
       onChange({ target: { value: isoString, name, id } });
     }
@@ -189,9 +243,6 @@ export default function DatePicker({
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
-
-  const today = new Date();
-  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const days = [];
 
@@ -245,8 +296,13 @@ export default function DatePicker({
         <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
           <button
             type="button"
+            disabled={isPrevMonthDisabled}
             onClick={handlePrevMonth}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-navy transition"
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${
+              isPrevMonthDisabled
+                ? "text-slate-200 cursor-not-allowed"
+                : "text-slate-600 hover:bg-slate-100 hover:text-navy cursor-pointer"
+            }`}
             title="Mês anterior"
           >
             <ChevronLeft size={17} />
@@ -256,8 +312,13 @@ export default function DatePicker({
           </div>
           <button
             type="button"
+            disabled={isNextMonthDisabled}
             onClick={handleNextMonth}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-navy transition"
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${
+              isNextMonthDisabled
+                ? "text-slate-200 cursor-not-allowed"
+                : "text-slate-600 hover:bg-slate-100 hover:text-navy cursor-pointer"
+            }`}
             title="Próximo mês"
           >
             <ChevronRight size={17} />
@@ -282,16 +343,30 @@ export default function DatePicker({
             const currentIso = `${d.year}-${String(d.month + 1).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
             const isSelected = value === currentIso;
             const isToday = todayIso === currentIso;
+            const isDisabledDate = Boolean((min && currentIso < min) || (max && currentIso > max));
 
             return (
               <button
                 key={index}
                 type="button"
-                onClick={() => handleSelectDate(d.year, d.month, d.day)}
+                disabled={isDisabledDate}
+                onClick={isDisabledDate ? undefined : () => handleSelectDate(d.year, d.month, d.day)}
+                title={
+                  isDisabledDate
+                    ? currentIso < min
+                      ? `Data anterior ao mínimo (${formatDisplayDate(min)})`
+                      : `Data posterior ao máximo (${formatDisplayDate(max)})`
+                    : undefined
+                }
                 className={`h-7 w-7 mx-auto rounded-lg flex items-center justify-center text-xs font-medium transition-all
-                  ${!d.isCurrentMonth ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50" : "text-slate-700"}
-                  ${isSelected ? "bg-amber-600 text-white font-bold shadow-sm shadow-amber-600/30 hover:bg-amber-700 !text-white" : "hover:bg-amber-50 hover:text-amber-900"}
-                  ${isToday && !isSelected ? "border border-teal-500 font-bold text-teal-700 bg-teal-50/50" : ""}`}
+                  ${isDisabledDate
+                    ? "text-slate-300 bg-slate-50/40 cursor-not-allowed opacity-35 select-none line-through"
+                    : !d.isCurrentMonth
+                      ? "text-slate-300 hover:text-slate-500 hover:bg-slate-50 cursor-pointer"
+                      : "text-slate-700 cursor-pointer"
+                  }
+                  ${isSelected && !isDisabledDate ? "bg-amber-600 text-white font-bold shadow-sm shadow-amber-600/30 hover:bg-amber-700 !text-white" : !isDisabledDate ? "hover:bg-amber-50 hover:text-amber-900" : ""}
+                  ${isToday && !isSelected && !isDisabledDate ? "border border-teal-500 font-bold text-teal-700 bg-teal-50/50" : ""}`}
               >
                 {d.day}
               </button>
@@ -304,14 +379,19 @@ export default function DatePicker({
           <button
             type="button"
             onClick={handleClear}
-            className="text-slate-400 hover:text-slate-700 font-medium px-2 py-1 rounded hover:bg-slate-100 transition"
+            className="text-slate-400 hover:text-slate-700 font-medium px-2 py-1 rounded hover:bg-slate-100 transition cursor-pointer"
           >
             Limpar
           </button>
           <button
             type="button"
+            disabled={isTodayDisabled}
             onClick={handleSelectToday}
-            className="text-amber-600 hover:text-amber-700 font-semibold px-2 py-1 rounded hover:bg-amber-50 transition"
+            className={`font-semibold px-2 py-1 rounded transition ${
+              isTodayDisabled
+                ? "text-slate-300 cursor-not-allowed opacity-50"
+                : "text-amber-600 hover:text-amber-700 hover:bg-amber-50 cursor-pointer"
+            }`}
           >
             Hoje
           </button>

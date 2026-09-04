@@ -90,5 +90,66 @@ describe("ProductFilters", () => {
     fireEvent.click(toggleBtn);
     expect(setFiltersOpen).toHaveBeenCalled();
   });
+
+  it("bloqueia a seleção de dataTo se for anterior a dateFrom", () => {
+    const setFilters = vi.fn();
+    render(
+      <ProductFilters
+        filters={{ ...defaultFilters, dateFrom: "2026-09-15" }}
+        setFilters={setFilters}
+        filtersOpen={true}
+        setFiltersOpen={vi.fn()}
+        activeFilterCount={1}
+        clearFilters={vi.fn()}
+      />
+    );
+
+    // Abre o DatePicker de 'Validade – até'
+    const triggers = screen.getAllByText("dd/mm/aaaa");
+    fireEvent.click(triggers[0]);
+
+    // O dia 10 de setembro (anterior a 15/09/2026) deve estar desabilitado
+    const day10Buttons = screen.getAllByRole("button", { name: "10" });
+    const disabledDay10 = day10Buttons.find((btn) => btn.disabled);
+    expect(disabledDay10).toBeDefined();
+
+    fireEvent.click(disabledDay10);
+    expect(setFilters).not.toHaveBeenCalled();
+  });
+
+  it("limpa dateTo automaticamente caso o usuário selecione um dateFrom posterior", () => {
+    let currentFilters = { ...defaultFilters, dateFrom: "2026-09-10", dateTo: "2026-09-15" };
+    const setFilters = vi.fn((updater) => {
+      if (typeof updater === "function") {
+        currentFilters = updater(currentFilters);
+      }
+    });
+
+    render(
+      <ProductFilters
+        filters={currentFilters}
+        setFilters={setFilters}
+        filtersOpen={true}
+        setFiltersOpen={vi.fn()}
+        activeFilterCount={2}
+        clearFilters={vi.fn()}
+      />
+    );
+
+    // Clica no trigger de dateFrom (10/09/2026)
+    const fromTrigger = screen.getByText("10/09/2026");
+    fireEvent.click(fromTrigger);
+
+    // Clica no dia 20 (posterior a 15/09/2026)
+    const day20Buttons = screen.getAllByRole("button", { name: "20" });
+    const enabledDay20 = day20Buttons.find((btn) => !btn.disabled);
+    expect(enabledDay20).toBeDefined();
+
+    fireEvent.click(enabledDay20);
+
+    expect(setFilters).toHaveBeenCalled();
+    expect(currentFilters.dateFrom).toBe("2026-09-20");
+    expect(currentFilters.dateTo).toBe("");
+  });
 });
 

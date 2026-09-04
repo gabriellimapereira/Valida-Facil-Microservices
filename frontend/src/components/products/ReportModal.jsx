@@ -62,6 +62,11 @@ export default function ReportModal({ onClose, onSubmit }) {
       }
     }
 
+    if (usesDateRange && dateFrom && dateTo && dateTo < dateFrom) {
+      setError("A data final não pode ser anterior à data inicial.");
+      return;
+    }
+
     setSubmitting(true);
     setStepLabel("Processando estoque...");
     const t1 = setTimeout(() => setStepLabel("Renderizando PDF..."), 1200);
@@ -144,7 +149,11 @@ export default function ReportModal({ onClose, onSubmit }) {
                 <DatePicker
                   value={dateFrom}
                   onChange={(e) => {
-                    setDateFrom(e.target.value);
+                    const nextFrom = e.target.value;
+                    setDateFrom(nextFrom);
+                    if (dateTo && nextFrom && nextFrom > dateTo) {
+                      setDateTo("");
+                    }
                     setError("");
                   }}
                   placeholder="Data inicial"
@@ -154,8 +163,13 @@ export default function ReportModal({ onClose, onSubmit }) {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Data Final</label>
                 <DatePicker
                   value={dateTo}
+                  min={dateFrom || undefined}
                   onChange={(e) => {
-                    setDateTo(e.target.value);
+                    const nextTo = e.target.value;
+                    if (dateFrom && nextTo && nextTo < dateFrom) {
+                      return;
+                    }
+                    setDateTo(nextTo);
                     setError("");
                   }}
                   placeholder="Data final"
