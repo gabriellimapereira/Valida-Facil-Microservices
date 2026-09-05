@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     reports_bucket: str = "reports"
     frontend_url: str = "https://valida-facil-livid.vercel.app"
     environment: str = "development"
+    cron_secret: str | None = None
+    cors_origins: str = ""
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        origins = [self.frontend_url]
+        if self.cors_origins:
+            for o in self.cors_origins.split(","):
+                clean = o.strip()
+                if clean and clean not in origins:
+                    origins.append(clean)
+        return origins
 
     @property
     def is_smtp_configured(self) -> bool:

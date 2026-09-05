@@ -14,16 +14,20 @@ _is_prod = settings.environment == "production"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        register_jobs()
-        scheduler.start()
-    except Exception as exc:
-        logging.warning("Scheduler não pôde ser iniciado em background: %s", exc)
+    # Em desenvolvimento local, o scheduler em memória continua disponível;
+    # Em produção na Vercel, o agendamento é disparado via Vercel Cron.
+    if not _is_prod:
+        try:
+            register_jobs()
+            scheduler.start()
+        except Exception as exc:
+            logging.warning("Scheduler local não pôde ser iniciado: %s", exc)
     yield
-    try:
-        scheduler.shutdown(wait=False)
-    except Exception:
-        pass
+    if not _is_prod:
+        try:
+            scheduler.shutdown(wait=False)
+        except Exception:
+            pass
 
 
 app = FastAPI(
@@ -39,10 +43,11 @@ app = FastAPI(
     openapi_url="/openapi.json" if not _is_prod else None,
 )
 
-# Em produção, aceitar apenas o domínio configurado em FRONTEND_URL.
-# Em desenvolvimento, aceitar qualquer localhost para facilitar o trabalho local.
+# Origens permitidas:
+# Em produção: settings.allowed_cors_origins + regex para qualquer preview/domínio da Vercel
+# Em desenvolvimento: aceita também localhost e IPs de loopback
 _local_origins = [
-    settings.frontend_url,
+    *settings.allowed_cors_origins,
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
@@ -51,10 +56,16 @@ _local_origins = [
     "http://127.0.0.1:5174",
 ]
 
+_origin_regex = (
+    r"^https://([a-zA-Z0-9_-]+\.)?vercel\.app$"
+    if _is_prod
+    else r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://([a-zA-Z0-9_-]+\.)?vercel\.app)$"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url] if _is_prod else _local_origins,
-    allow_origin_regex=None if _is_prod else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=settings.allowed_cors_origins if _is_prod else _local_origins,
+    allow_origin_regex=_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],

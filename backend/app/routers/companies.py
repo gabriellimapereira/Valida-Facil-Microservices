@@ -103,6 +103,35 @@ async def invite_user(payload: InviteUserRequest, user: AuthedUser = Depends(req
     )
     company_name = (company_resp.data or {}).get("name") or "Valida Fácil"
 
+    # Verifica se já existe um perfil cadastrado com este e-mail
+    existing_profile_resp = (
+        admin_client.table("profiles")
+        .select("id, email, company_id, role")
+        .eq("email", payload.email)
+        .maybe_single()
+        .execute()
+    )
+    existing_profile = existing_profile_resp.data
+
+    if existing_profile:
+        # Se já pertence a esta empresa
+        if existing_profile.get("company_id") == user.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este colaborador já faz parte da equipe da sua empresa.",
+            )
+        # Se pertence a outra empresa
+        if existing_profile.get("company_id"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este usuário já está vinculado a outra empresa cadastrada.",
+            )
+        # Se tem conta criada mas estava sem empresa vinculada
+        admin_client.table("profiles").update(
+            {"company_id": user.company_id, "role": "operador", "full_name": payload.full_name}
+        ).eq("id", existing_profile["id"]).execute()
+        return InviteUserResponse(status="colaborador adicionado", user_id=existing_profile["id"], email=payload.email)
+
     try:
         created = admin_client.auth.admin.invite_user_by_email(
             payload.email,
@@ -115,9 +144,18 @@ async def invite_user(payload: InviteUserRequest, user: AuthedUser = Depends(req
                 "redirect_to": f"{settings.frontend_url}/definir-senha",
             },
         )
-    except Exception:
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "already" in msg or "registered" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este e-mail já está cadastrado no sistema.",
+            )
         logger.exception("Falha ao convidar usuário %s para empresa %s", payload.email, user.company_id)
-        raise HTTPException(status_code=400, detail="Não foi possível enviar o convite. Verifique o e-mail e tente novamente.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não foi possível enviar o convite. Verifique o e-mail e tente novamente.",
+        )
 
     new_user = getattr(created, "user", None)
     if not new_user:

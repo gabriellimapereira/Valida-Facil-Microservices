@@ -34,6 +34,12 @@
                 "service": "frontend"
             }
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/alerts/cron-expiry-check",
+            "schedule": "0 10 * * *"
+        }
     ]
 }
 
