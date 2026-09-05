@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Geral
     reports_bucket: str = "reports"
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "https://valida-facil-livid.vercel.app"
     environment: str = "development"
 
     @property

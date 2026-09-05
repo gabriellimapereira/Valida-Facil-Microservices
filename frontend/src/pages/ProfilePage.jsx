@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   Building2,
   CheckCircle2,
+  Eye,
+  EyeOff,
   ImagePlus,
   Lock,
   Mail,
@@ -11,6 +13,7 @@ import {
   Shield,
   ShieldCheck,
   Trash2,
+  User,
   UserCheck,
   UserPlus,
   Users,
@@ -32,16 +35,18 @@ import ConfirmationModal from "../components/ui/ConfirmationModal";
 const FIELD_LIMITS = { name: 200, address: 300 };
 
 export default function ProfilePage() {
-  const { user, role } = useAuth();
+  const { user, profile, role } = useAuth();
   const { company, saveCompany } = useCompany();
   const { addToast } = useToast();
 
   const isAdmin = role === "admin";
 
   const [form, setForm] = useState(null);
-  const [pw, setPw] = useState({ current: "" });
+  const [pw, setPw] = useState({ current: "", newPassword: "", confirm: "" });
+  const [showPw, setShowPw] = useState({ current: false, newPassword: false, confirm: false });
   const [pwErr, setPwErr] = useState("");
   const [pwSubmitting, setPwSubmitting] = useState(false);
+  const [sendingResetEmail, setSendingResetEmail] = useState(false);
   const [testingAlert, setTestingAlert] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -178,14 +183,24 @@ export default function ProfilePage() {
   const handleSavePassword = async (e) => {
     e.preventDefault();
     if (pwSubmitting) return;
+
     if (!pw.current) {
       setPwErr("Informe sua senha atual.");
       return;
     }
-    if (pw.current.length < MIN_PASSWORD_LENGTH) {
-      setPwErr(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    if (!pw.newPassword) {
+      setPwErr("Informe a nova senha.");
       return;
     }
+    if (pw.newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPwErr(`A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+      return;
+    }
+    if (pw.newPassword !== pw.confirm) {
+      setPwErr("A confirmação da nova senha não confere.");
+      return;
+    }
+
     setPwErr("");
     setPwSubmitting(true);
     try {
@@ -194,13 +209,26 @@ export default function ProfilePage() {
         setPwErr("Senha atual incorreta.");
         return;
       }
-      await authService.requestPasswordReset(user.email);
-      setPw({ current: "" });
-      addToast(`Enviamos um link de troca de senha para ${user.email}.`);
+      await authService.updatePassword(pw.newPassword);
+      setPw({ current: "", newPassword: "", confirm: "" });
+      addToast("Sua senha foi alterada com sucesso!");
     } catch (err) {
-      addToast(err.message || "Não foi possível iniciar a troca de senha.", "error");
+      addToast(err.message || "Não foi possível alterar sua senha.", "error");
     } finally {
       setPwSubmitting(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (sendingResetEmail) return;
+    setSendingResetEmail(true);
+    try {
+      await authService.requestPasswordReset(user.email);
+      addToast(`Enviamos um link de recuperação para ${user.email}.`);
+    } catch (err) {
+      addToast(err.message || "Não foi possível enviar o link de recuperação.", "error");
+    } finally {
+      setSendingResetEmail(false);
     }
   };
 
@@ -242,13 +270,19 @@ export default function ProfilePage() {
       {/* Header Info Card */}
       <div className="bg-[#122038]/90 backdrop-blur-md rounded-3xl border border-slate-700/60 shadow-2xl shadow-black/40 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
               isAdmin ? "bg-amber-500/15 border border-amber-500/30 text-amber-300" : "bg-teal-500/15 border border-teal-500/30 text-teal-300"
             }`}>
               <ShieldCheck size={13} className={isAdmin ? "text-amber-400" : "text-teal-400"} />
               {isAdmin ? "Perfil Administrador" : "Perfil Operador"}
             </span>
+            {user?.email && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800/80 border border-slate-700/70 text-slate-300">
+                <User size={12} className="text-slate-400" />
+                Conta conectada: <strong className="text-white font-semibold">{user.email}</strong>
+              </span>
+            )}
             {form.cnpj && <span className="text-xs text-slate-400 font-mono">CNPJ: {form.cnpj}</span>}
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">{form.name}</h2>
@@ -486,27 +520,76 @@ export default function ProfilePage() {
           </div>
           <div>
             <h3 className="font-bold text-white text-base">Segurança & Acesso Pessoal</h3>
-            <p className="text-xs text-slate-400">Altere a senha de acesso da sua conta individual</p>
+            <p className="text-xs text-slate-400">
+              Altere a senha da sua conta de acesso {user?.email && <span className="text-slate-300 font-mono">({user.email})</span>}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-start gap-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl px-4 py-3">
-          <AlertTriangle size={17} className="text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-200/90 leading-relaxed">
-            Confirme sua senha atual para receber o link seguro de redefinição no seu e-mail cadastrado.
-          </p>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Senha atual</label>
+            <div className="relative">
+              <input
+                type={showPw.current ? "text" : "password"}
+                value={pw.current}
+                onChange={(e) => setPw((p) => ({ ...p, current: e.target.value }))}
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-[#0B1322] text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((s) => ({ ...s, current: !s.current }))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+                tabIndex={-1}
+              >
+                {showPw.current ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
 
-        <div className="max-w-sm">
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">Senha atual</label>
-          <input
-            type="password"
-            value={pw.current}
-            onChange={(e) => setPw({ current: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/80 bg-[#0B1322] text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
-            placeholder="••••••••"
-          />
-          <PasswordRequirementHint value={pw.current} />
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Nova senha</label>
+            <div className="relative">
+              <input
+                type={showPw.newPassword ? "text" : "password"}
+                value={pw.newPassword}
+                onChange={(e) => setPw((p) => ({ ...p, newPassword: e.target.value }))}
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-[#0B1322] text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((s) => ({ ...s, newPassword: !s.newPassword }))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+                tabIndex={-1}
+              >
+                {showPw.newPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <PasswordRequirementHint value={pw.newPassword} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirmar nova senha</label>
+            <div className="relative">
+              <input
+                type={showPw.confirm ? "text" : "password"}
+                value={pw.confirm}
+                onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
+                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/80 bg-[#0B1322] text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((s) => ({ ...s, confirm: !s.confirm }))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+                tabIndex={-1}
+              >
+                {showPw.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
         </div>
 
         {pwErr && (
@@ -516,15 +599,25 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="flex justify-end pt-2 border-t border-slate-700/60">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-700/60">
+          <button
+            type="button"
+            onClick={handleSendResetEmail}
+            disabled={sendingResetEmail}
+            className="text-xs text-slate-400 hover:text-amber-400 transition underline disabled:opacity-50 cursor-pointer"
+          >
+            {sendingResetEmail ? "Enviando e-mail..." : `Esqueceu a senha atual? Enviar link de redefinição para ${user?.email || "seu e-mail"}`}
+          </button>
+
           <TactileButton
             type="submit"
             variant="amber"
             disabled={pwSubmitting}
             padding="10px 22px"
             rounded={12}
+            className="w-full sm:w-auto"
           >
-            {pwSubmitting ? "Enviando..." : "Enviar link de troca de senha"}
+            {pwSubmitting ? "Atualizando..." : "Salvar nova senha"}
           </TactileButton>
         </div>
       </form>
