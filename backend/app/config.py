@@ -3,6 +3,8 @@ Configurações centrais da aplicação, lidas do arquivo .env.
 Nunca acesse variáveis de ambiente diretamente pelo código — sempre
 importe `settings` daqui, para manter um único ponto de verdade.
 """
+import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +15,23 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
+
+    @field_validator("supabase_url", mode="before")
+    @classmethod
+    def clean_supabase_url(cls, v: str) -> str:
+        val = (v or os.getenv("VITE_SUPABASE_URL", "")).strip().strip("'\"")
+        return val
+
+    @field_validator("supabase_anon_key", mode="before")
+    @classmethod
+    def clean_supabase_anon_key(cls, v: str) -> str:
+        val = (v or os.getenv("VITE_SUPABASE_ANON_KEY", "")).strip().strip("'\"")
+        return val
+
+    @field_validator("supabase_service_role_key", mode="before")
+    @classmethod
+    def clean_service_role_key(cls, v: str) -> str:
+        return (v or "").strip().strip("'\"")
 
     # SMTP
     smtp_host: str | None = None

@@ -94,24 +94,34 @@ api_router.include_router(alerts.router, prefix="/alerts", tags=["Alertas"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
 
 
+import traceback
 from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exc()
     logging.exception("Exceção não tratada na rota %s: %s", request.url.path, exc)
+    last_line = tb.splitlines()[-2] if len(tb.splitlines()) > 1 else ""
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Erro interno ({type(exc).__name__}): {str(exc)}"},
+        content={
+            "detail": f"Erro interno ({type(exc).__name__}): {str(exc)}",
+            "context": last_line.strip(),
+        },
     )
 
 
 @api_router.get("/health", tags=["Status"])
 def health():
+    anon = settings.supabase_anon_key or ""
+    serv = settings.supabase_service_role_key or ""
     return {
         "status": "ok",
         "has_supabase_url": bool(settings.supabase_url),
-        "has_anon_key": bool(settings.supabase_anon_key),
-        "has_service_role_key": bool(settings.supabase_service_role_key),
+        "anon_key_prefix": anon[:8] if anon else "",
+        "anon_key_len": len(anon),
+        "service_key_prefix": serv[:8] if serv else "",
+        "service_key_len": len(serv),
         "environment": settings.environment,
     }
 
