@@ -13,8 +13,17 @@ function translateAuthError(error) {
   if (raw.includes("user not found")) {
     return "Não encontramos uma conta com esse e-mail.";
   }
-  if (raw.includes("rate limit")) {
+  if (raw.includes("rate limit") || raw.includes("over_email_send_rate_limit")) {
     return "Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.";
+  }
+  if (raw.includes("same_password") || raw.includes("different from the old") || raw.includes("different from old")) {
+    return "A nova senha deve ser diferente da senha anterior.";
+  }
+  if (raw.includes("auth session missing") || raw.includes("session")) {
+    return "Sessão expirada ou link inválido. Solicite um novo link de acesso.";
+  }
+  if (raw.includes("password should be at least")) {
+    return "A senha não atende aos requisitos mínimos de segurança.";
   }
   return error?.message || "Não foi possível entrar. Verifique suas credenciais.";
 }
@@ -66,7 +75,7 @@ export async function requestPasswordReset(email) {
 export async function updatePassword(newPassword) {
   if (isSupabaseConfigured) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw error;
+    if (error) throw new Error(translateAuthError(error));
     return true;
   }
   await new Promise((r) => setTimeout(r, 300));

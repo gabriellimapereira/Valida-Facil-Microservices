@@ -102,6 +102,8 @@ class TestRunExpiryCheckAllCompanies:
         monkeypatch.setattr(expiry_service, "check_and_notify_company", spy)
         monkeypatch.setattr(expiry_service, "send_email", lambda **kwargs: True)
 
-        expiry_service.run_expiry_check_all_companies(window_days=15)
+        results = expiry_service.run_expiry_check_all_companies(window_days=15)
 
         assert set(checked) == {"company-1", "company-2"}
+        assert isinstance(results, list)
+        assert len(results) == 2

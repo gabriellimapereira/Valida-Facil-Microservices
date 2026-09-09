@@ -10,6 +10,7 @@ vi.mock("../services/authService", () => ({
   getSessionUser: vi.fn(),
   updatePassword: vi.fn(),
   logout: vi.fn().mockResolvedValue(true),
+  onAuthStateChange: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
 }));
 
 import * as authService from "../services/authService";

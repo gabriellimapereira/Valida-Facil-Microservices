@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Boxes, Compass, LayoutDashboard, PackageSearch } from "lucide-react";
+import { ArrowLeft, Compass, LayoutDashboard, PackageSearch } from "lucide-react";
+import BrandLogo from "../components/ui/BrandLogo";
 import TactileButton from "../components/ui/TactileButton";
 
 export default function NotFoundPage() {
@@ -15,9 +16,7 @@ export default function NotFoundPage() {
 
       {/* Topo: Logo Oficial */}
       <div className="relative z-10 flex items-center justify-center sm:justify-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center shadow-lg shadow-amber-600/20">
-          <Boxes size={22} className="text-white" />
-        </div>
+        <BrandLogo size={40} className="shadow-lg shadow-black/20 rounded-full shrink-0" />
         <span className="text-white font-bold text-xl tracking-tight">Valida Fácil</span>
       </div>
 

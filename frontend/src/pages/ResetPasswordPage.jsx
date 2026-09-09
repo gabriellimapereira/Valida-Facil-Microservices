@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Boxes, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import BrandLogo from "../components/ui/BrandLogo";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
@@ -26,9 +27,26 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     let mounted = true;
-    // Dá um instante pro supabase-js terminar de processar o token da URL
-    // antes de checar a sessão — ler rápido demais pode pegar o estado
-    // "ainda não processado" e mostrar erro à toa.
+
+    // Checa a sessão imediatamente caso o token já tenha sido processado
+    authService.getSessionUser().then((user) => {
+      if (mounted && user) {
+        setLinkValid(true);
+        setCheckingLink(false);
+      }
+    }).catch(() => {});
+
+    // Escuta eventos de autenticação caso o token da URL ainda esteja sendo validado
+    const subscription = authService.onAuthStateChange
+      ? authService.onAuthStateChange((user) => {
+          if (mounted && user) {
+            setLinkValid(true);
+            setCheckingLink(false);
+          }
+        })
+      : null;
+
+    // Fallback de timeout para o caso de link inválido/ausente
     const timer = setTimeout(async () => {
       try {
         const user = await authService.getSessionUser();
@@ -42,10 +60,11 @@ export default function ResetPasswordPage() {
           setCheckingLink(false);
         }
       }
-    }, 400);
+    }, 450);
 
     return () => {
       mounted = false;
+      if (subscription?.unsubscribe) subscription.unsubscribe();
       clearTimeout(timer);
     };
   }, []);
@@ -86,10 +105,8 @@ export default function ResetPasswordPage() {
 
   const Logo = (
     <div className="flex items-center gap-3 mb-8 justify-center">
-      <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
-        <Boxes size={22} className="text-white" />
-      </div>
-      <span className="text-slate-900 font-semibold text-lg">Valida Fácil</span>
+      <BrandLogo size={42} className="shadow-md shadow-black/20 rounded-full shrink-0" />
+      <span className="text-slate-900 font-bold text-xl tracking-tight">Valida Fácil</span>
     </div>
   );
 

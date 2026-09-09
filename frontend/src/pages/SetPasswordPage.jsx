@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Boxes, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import BrandLogo from "../components/ui/BrandLogo";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
@@ -26,6 +27,23 @@ export default function SetPasswordPage() {
 
   useEffect(() => {
     let mounted = true;
+
+    authService.getSessionUser().then((user) => {
+      if (mounted && user) {
+        setLinkValid(true);
+        setCheckingLink(false);
+      }
+    }).catch(() => {});
+
+    const subscription = authService.onAuthStateChange
+      ? authService.onAuthStateChange((user) => {
+          if (mounted && user) {
+            setLinkValid(true);
+            setCheckingLink(false);
+          }
+        })
+      : null;
+
     const timer = setTimeout(async () => {
       try {
         const user = await authService.getSessionUser();
@@ -39,10 +57,11 @@ export default function SetPasswordPage() {
           setCheckingLink(false);
         }
       }
-    }, 400);
+    }, 450);
 
     return () => {
       mounted = false;
+      if (subscription?.unsubscribe) subscription.unsubscribe();
       clearTimeout(timer);
     };
   }, []);
@@ -78,9 +97,7 @@ export default function SetPasswordPage() {
 
   const Logo = (
     <div className="flex items-center gap-3 mb-8 justify-center">
-      <div className="w-11 h-11 rounded-2xl bg-amber-600 flex items-center justify-center shadow-lg shadow-amber-600/30">
-        <Boxes size={24} className="text-white" />
-      </div>
+      <BrandLogo size={48} className="shadow-lg shadow-black/20 rounded-full shrink-0" />
       <span className="text-white font-bold text-2xl tracking-tight">Valida Fácil</span>
     </div>
   );

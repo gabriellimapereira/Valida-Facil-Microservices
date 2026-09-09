@@ -7,7 +7,10 @@ export const brl = (value) =>
 
 export const fmtDate = (iso) => {
   if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
+  const clean = String(iso).split("T")[0];
+  const parts = clean.split("-");
+  if (parts.length < 3) return iso;
+  const [y, m, d] = parts;
   return `${d}/${m}/${y}`;
 };
 
@@ -39,7 +42,7 @@ export function expiryUrgency(iso) {
   return { level: "low", label: `Vence em ${d} dias`, dot: "bg-slate-300", chip: "bg-slate-50 text-slate-600 border-slate-200" };
 }
 
-export const isLowStock = (p) => p.quantity <= p.minStock;
+export const isLowStock = (p) => Boolean(p && typeof p.quantity === "number" && typeof p.minStock === "number" && p.quantity <= p.minStock);
 
 // Aplica a máscara 00.000.000/0000-00 progressivamente enquanto digita, e
 // SEMPRE corta em 14 dígitos — não tem como digitar CNPJ maior que isso.

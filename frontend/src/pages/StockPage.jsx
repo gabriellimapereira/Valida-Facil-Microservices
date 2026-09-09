@@ -76,14 +76,14 @@ export default function StockPage() {
     const { search, category, dateFrom, dateTo } = filters;
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+      list = list.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q));
     }
     if (category !== "all") list = list.filter((p) => p.category === category);
     if (dateFrom) list = list.filter((p) => p.expiry && p.expiry >= dateFrom);
     if (dateTo) list = list.filter((p) => p.expiry && p.expiry <= dateTo);
 
     if (sortField === "name") {
-      list.sort((a, b) => sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+      list.sort((a, b) => sortOrder === "asc" ? (a.name || "").localeCompare(b.name || "") : (b.name || "").localeCompare(a.name || ""));
     } else if (sortField === "price") {
       list.sort((a, b) => sortOrder === "asc" ? a.price - b.price : b.price - a.price);
     } else if (sortField === "quantity") {

@@ -70,16 +70,20 @@ def check_and_notify_company(client: Client, company_id: str, window_days: int =
     }
 
 
-def run_expiry_check_all_companies(window_days: int = 15) -> None:
+def run_expiry_check_all_companies(window_days: int = 15) -> list[dict]:
     """Job do scheduler — roda para todas as empresas cadastradas."""
     client = service_client()
     companies_resp = client.table("companies").select("id").execute()
     companies = companies_resp.data or []
 
+    results = []
     logger.info("Iniciando varredura de validade para %d empresa(s).", len(companies))
     for company in companies:
         try:
             result = check_and_notify_company(client, company["id"], window_days=window_days)
             logger.info("Empresa %s: %s", company["id"], result)
-        except Exception:
+            results.append({"company_id": company["id"], **result})
+        except Exception as exc:
             logger.exception("Falha ao checar validade da empresa %s", company["id"])
+            results.append({"company_id": company["id"], "notified": False, "error": str(exc)})
+    return results

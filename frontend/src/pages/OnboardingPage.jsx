@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navigate } from "react-router-dom";
-import { AlertTriangle, Boxes, Building2, Mail, Phone } from "lucide-react";
+import { AlertTriangle, Building2, Mail, Phone } from "lucide-react";
+import BrandLogo from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as companyService from "../services/companyService";
@@ -78,10 +78,8 @@ export default function OnboardingPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-6">
       <div className="w-full max-w-lg">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center">
-            <Boxes size={22} className="text-white" />
-          </div>
-          <span className="text-slate-900 font-semibold text-lg">Valida Fácil</span>
+          <BrandLogo size={42} className="shadow-md shadow-black/20 rounded-full shrink-0" />
+          <span className="text-slate-900 font-bold text-xl tracking-tight">Valida Fácil</span>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">

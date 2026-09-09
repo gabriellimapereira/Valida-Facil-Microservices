@@ -51,9 +51,9 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
     company = company_resp.data[0]
 
     try:
-        admin_client.table("profiles").update(
-            {"company_id": company["id"], "role": "admin"}
-        ).eq("id", user.id).execute()
+        admin_client.table("profiles").upsert(
+            {"id": user.id, "company_id": company["id"], "role": "admin", "email": user.email}
+        ).execute()
     except Exception as exc:
         logger.exception("Falha ao atualizar perfil do admin %s: %s", user.id, exc)
         raise HTTPException(status_code=500, detail=f"Empresa criada, mas falhou ao atualizar perfil do administrador: {exc}")

@@ -32,7 +32,8 @@ async function request(path, { method = "GET", body, params } = {}) {
   const base = API_BASE_URL.startsWith("http://") || API_BASE_URL.startsWith("https://")
     ? API_BASE_URL.replace(/\/$/, "")
     : (typeof window !== "undefined" && window.location?.origin ? window.location.origin : "http://localhost:8000") + (API_BASE_URL.startsWith("/") ? API_BASE_URL : `/${API_BASE_URL}`).replace(/\/$/, "");
-  const url = new URL(base + path);
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(base + cleanPath);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -66,7 +67,14 @@ async function request(path, { method = "GET", body, params } = {}) {
 
   if (!response.ok) {
     const detail = payload?.detail;
-    const message = typeof detail === "string" ? detail : `Erro ${response.status} no servidor.`;
+    let message = `Erro ${response.status} no servidor.`;
+    if (typeof detail === "string") {
+      message = detail;
+    } else if (Array.isArray(detail) && detail.length > 0) {
+      message = detail.map((err) => err.msg || JSON.stringify(err)).join("; ");
+    } else if (payload?.message) {
+      message = payload.message;
+    }
     throw new Error(message);
   }
 

@@ -49,6 +49,7 @@ class FakeQuery:
         self._filters = []
         self._mode = "select"  # select | single | maybe_single
         self._pending_insert = None
+        self._pending_upsert = None
         self._pending_update = None
         self._pending_delete = False
 
@@ -93,6 +94,10 @@ class FakeQuery:
         self._pending_insert = payload if isinstance(payload, list) else [payload]
         return self
 
+    def upsert(self, payload):
+        self._pending_upsert = payload if isinstance(payload, list) else [payload]
+        return self
+
     def update(self, payload):
         self._pending_update = payload
         return self
@@ -102,6 +107,24 @@ class FakeQuery:
         return self
 
     def execute(self):
+        if self._pending_upsert is not None:
+            upserted = []
+            for item in self._pending_upsert:
+                row = dict(item)
+                key = row.get("id")
+                existing = next((r for r in self._rows if r.get("id") == key), None) if key else None
+                if existing:
+                    existing.update(row)
+                    upserted.append(existing)
+                else:
+                    row.setdefault("id", str(uuid.uuid4()))
+                    row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+                    self._rows.append(row)
+                    upserted.append(row)
+            if self._mode in ("single", "maybe_single"):
+                return FakeResult(upserted[0] if upserted else None)
+            return FakeResult(upserted)
+
         if self._pending_insert is not None:
             inserted = []
             for item in self._pending_insert:

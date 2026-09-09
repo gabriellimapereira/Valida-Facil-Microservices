@@ -1,7 +1,8 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Boxes, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Package, Settings, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Package, Settings, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import BrandLogo from "../ui/BrandLogo";
 import CompanyLogo from "../ui/CompanyLogo";
 import ConfirmationModal from "../ui/ConfirmationModal";
 
@@ -58,9 +59,7 @@ export default function Sidebar({ company, mobileOpen, setMobileOpen, collapsed,
 
         {/* Brand Header */}
         <div className={`flex items-center gap-3 h-16 border-b border-white/10 shrink-0 ${collapsed ? "lg:justify-center px-6 lg:px-0" : "px-6"}`}>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
-            <Boxes size={18} className="text-white" />
-          </div>
+          <BrandLogo size={36} className="shadow-md shadow-black/30 rounded-full shrink-0" />
           <span className={`text-white font-bold tracking-tight text-base whitespace-nowrap ${collapsed ? "lg:hidden" : ""}`}>
             Valida Fácil
           </span>

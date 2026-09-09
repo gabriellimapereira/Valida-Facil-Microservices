@@ -9,6 +9,7 @@ vi.mock("../services/authService", () => ({
   getSessionUser: vi.fn(),
   updatePassword: vi.fn(),
   logout: vi.fn(),
+  onAuthStateChange: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
 }));
 
 vi.mock("../context/ToastContext", () => ({

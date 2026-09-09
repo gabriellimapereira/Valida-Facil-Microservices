@@ -10,10 +10,11 @@ _env = Environment(
 )
 
 BRAND = {
-    "navy": "#0F172A",
+    "navy": "#011747",
     "gold": "#D97706",
     "teal": "#0D9488",
     "bg": "#F1F5F9",
+    "logo_url": "https://valida-facil-livid.vercel.app/logo-circle.png",
 }
 
 

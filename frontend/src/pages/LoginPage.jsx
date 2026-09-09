@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowDown,
-  Boxes,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -17,6 +16,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
+import BrandLogo from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
@@ -25,9 +25,7 @@ import TactileButton from "../components/ui/TactileButton";
 
 const Logo = ({ dark }) => (
   <div className={`flex items-center gap-3 ${dark ? "" : "mb-6 justify-center"}`}>
-    <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center shadow-sm">
-      <Boxes size={22} className="text-white" />
-    </div>
+    <BrandLogo size={40} className="shadow-md shadow-black/20 rounded-full shrink-0" />
     <span className={`font-bold text-xl ${dark ? "text-white tracking-tight" : "text-slate-900"}`}>Valida Fácil</span>
   </div>
 );
