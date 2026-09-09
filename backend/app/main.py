@@ -94,10 +94,26 @@ api_router.include_router(alerts.router, prefix="/alerts", tags=["Alertas"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
 
 
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.exception("Exceção não tratada na rota %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Erro interno ({type(exc).__name__}): {str(exc)}"},
+    )
+
+
 @api_router.get("/health", tags=["Status"])
 def health():
-    # Não expõe detalhes do ambiente para não vazar informações de configuração
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "has_supabase_url": bool(settings.supabase_url),
+        "has_anon_key": bool(settings.supabase_anon_key),
+        "has_service_role_key": bool(settings.supabase_service_role_key),
+        "environment": settings.environment,
+    }
 
 
 # Suporta tanto chamadas diretas quanto via rewrites do Vercel/proxies (/api/...)

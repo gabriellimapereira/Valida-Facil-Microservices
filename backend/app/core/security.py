@@ -61,14 +61,20 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão inválida.")
 
-    profile_resp = (
-        client.table("profiles")
-        .select("company_id, role, full_name")
-        .eq("id", user.id)
-        .maybe_single()
-        .execute()
-    )
-    profile_data = profile_resp.data or {}
+    try:
+        profile_resp = (
+            client.table("profiles")
+            .select("company_id, role, full_name")
+            .eq("id", user.id)
+            .maybe_single()
+            .execute()
+        )
+        profile_data = profile_resp.data or {}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha ao consultar perfil no Supabase: {exc}",
+        ) from exc
 
     return AuthedUser(
         id=user.id,

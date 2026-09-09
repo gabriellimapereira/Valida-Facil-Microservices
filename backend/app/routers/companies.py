@@ -43,16 +43,20 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Já existe uma empresa cadastrada com esse CNPJ.",
             )
-        logger.exception("Falha ao criar empresa para usuário %s", user.id)
-        raise HTTPException(status_code=500, detail="Não foi possível criar a empresa.")
+        logger.exception("Falha ao criar empresa para usuário %s: %s", user.id, exc)
+        raise HTTPException(status_code=500, detail=f"Não foi possível criar a empresa no banco de dados: {exc}")
 
     if not company_resp.data:
-        raise HTTPException(status_code=500, detail="Não foi possível criar a empresa.")
+        raise HTTPException(status_code=500, detail="Supabase não retornou os dados da empresa criada.")
     company = company_resp.data[0]
 
-    admin_client.table("profiles").update(
-        {"company_id": company["id"], "role": "admin"}
-    ).eq("id", user.id).execute()
+    try:
+        admin_client.table("profiles").update(
+            {"company_id": company["id"], "role": "admin"}
+        ).eq("id", user.id).execute()
+    except Exception as exc:
+        logger.exception("Falha ao atualizar perfil do admin %s: %s", user.id, exc)
+        raise HTTPException(status_code=500, detail=f"Empresa criada, mas falhou ao atualizar perfil do administrador: {exc}")
 
     return company
 
