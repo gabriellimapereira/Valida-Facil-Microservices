@@ -99,15 +99,10 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    tb = traceback.format_exc()
     logging.exception("Exceção não tratada na rota %s: %s", request.url.path, exc)
-    last_line = tb.splitlines()[-2] if len(tb.splitlines()) > 1 else ""
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": f"Erro interno ({type(exc).__name__}): {str(exc)}",
-            "context": last_line.strip(),
-        },
+        content={"detail": f"Erro interno ({type(exc).__name__}): {str(exc)}"},
     )
 
 
