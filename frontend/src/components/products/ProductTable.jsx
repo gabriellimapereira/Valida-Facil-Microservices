@@ -218,7 +218,7 @@ export default function ProductTable({
                       <button
                         onClick={() => onMovement(p)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:text-amber-700 hover:border hover:border-amber-200 transition cursor-pointer"
-                        title="Registrar movimentação (Entrada/Saída/Ajuste)"
+                        title="Registrar movimentação (Entrada/Saída)"
                         aria-label={`Registrar movimentação de ${p.name}`}
                       >
                         <ArrowLeftRight size={15} />

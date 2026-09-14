@@ -44,7 +44,7 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
                 detail="Já existe uma empresa cadastrada com esse CNPJ.",
             )
         logger.exception("Falha ao criar empresa para usuário %s: %s", user.id, exc)
-        raise HTTPException(status_code=500, detail=f"Não foi possível criar a empresa no banco de dados: {exc}")
+        raise HTTPException(status_code=500, detail="Não foi possível criar a empresa no banco de dados. Tente novamente mais tarde.")
 
     if not company_resp.data:
         raise HTTPException(status_code=500, detail="Supabase não retornou os dados da empresa criada.")
@@ -56,7 +56,7 @@ async def create_company(payload: CompanyCreate, user: AuthedUser = Depends(get_
         ).execute()
     except Exception as exc:
         logger.exception("Falha ao atualizar perfil do admin %s: %s", user.id, exc)
-        raise HTTPException(status_code=500, detail=f"Empresa criada, mas falhou ao atualizar perfil do administrador: {exc}")
+        raise HTTPException(status_code=500, detail="Empresa criada, mas ocorreu uma falha ao atualizar o perfil do administrador.")
 
     return company
 
@@ -180,6 +180,12 @@ async def update_member_role(
     user: AuthedUser = Depends(require_admin),
 ):
     """Altera o papel de um membro da equipe (Apenas Administrador)."""
+    if str(member_id) == str(user.id) and payload.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Você não pode revogar seu próprio papel de administrador da empresa.",
+        )
+
     admin_client = service_client()
     resp = (
         admin_client.table("profiles")

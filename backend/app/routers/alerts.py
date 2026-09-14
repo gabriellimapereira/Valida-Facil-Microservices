@@ -3,6 +3,8 @@ Disparo manual de checagem de validade (além do job automático diário do
 scheduler) — útil para o admin forçar o envio a qualquer momento, ou para
 debug em ambiente de desenvolvimento.
 """
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.config import settings
@@ -35,12 +37,22 @@ async def cron_expiry_check(
     """
     if settings.cron_secret:
         auth_header = request.headers.get("Authorization", "")
-        expected_token = f"Bearer {settings.cron_secret}"
-        if auth_header != expected_token and cron_key != settings.cron_secret:
+        token_match = False
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            token_match = secrets.compare_digest(token, settings.cron_secret)
+        key_match = bool(cron_key and secrets.compare_digest(cron_key, settings.cron_secret))
+
+        if not (token_match or key_match):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token de autorização do Cron inválido ou ausente.",
             )
+    elif settings.environment == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso bloqueado: CRON_SECRET obrigatório em ambiente de produção.",
+        )
 
     results = expiry_service.run_expiry_check_all_companies(window_days=window_days)
     return {"status": "concluido", "empresas_processadas": len(results), "detalhes": results}

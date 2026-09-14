@@ -248,9 +248,22 @@ create policy "Usuários veem a própria empresa"
   using (id = public.get_auth_user_company_id());
 
 drop policy if exists "Usuários atualizam a própria empresa" on companies;
-create policy "Usuários atualizam a própria empresa"
+drop policy if exists "Apenas administradores atualizam a própria empresa" on companies;
+create policy "Apenas administradores atualizam a própria empresa"
   on companies for update
-  using (id = public.get_auth_user_company_id());
+  using (
+    id = public.get_auth_user_company_id()
+    and exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+      and profiles.role = 'admin'
+    )
+  );
+
+drop policy if exists "Bloquear exclusão de empresas via cliente" on companies;
+create policy "Bloquear exclusão de empresas via cliente"
+  on companies for delete
+  using (false);
 
 -- Policies para Products
 drop policy if exists "Usuários veem produtos da própria empresa" on products;
@@ -273,10 +286,23 @@ create policy "Usuários veem perfis da própria empresa"
     or (company_id is not null and company_id = public.get_auth_user_company_id())
   );
 
+-- Previne privilege escalation: usuário só atualiza seu próprio perfil, mas NÃO pode alterar seu próprio role nem sua empresa
 drop policy if exists "Usuários atualizam o próprio perfil" on profiles;
 create policy "Usuários atualizam o próprio perfil"
   on profiles for update
-  using (id = auth.uid());
+  using (id = auth.uid())
+  with check (
+    id = auth.uid()
+    and role = (select p.role from profiles p where p.id = auth.uid())
+    and (
+      company_id is not distinct from (select p.company_id from profiles p where p.id = auth.uid())
+    )
+  );
+
+drop policy if exists "Bloquear deleção direta de perfis" on profiles;
+create policy "Bloquear deleção direta de perfis"
+  on profiles for delete
+  using (false);
 
 -- Policies para Stock Movements
 drop policy if exists "Usuários veem movimentações da própria empresa" on stock_movements;
@@ -288,3 +314,14 @@ drop policy if exists "Usuários registram movimentações na própria empresa" 
 create policy "Usuários registram movimentações na própria empresa"
   on stock_movements for insert
   with check (company_id = public.get_auth_user_company_id());
+
+-- Histórico de auditoria imutável (não pode ser alterado nem deletado via client)
+drop policy if exists "Movimentações de estoque são imutáveis" on stock_movements;
+create policy "Movimentações de estoque são imutáveis"
+  on stock_movements for update
+  using (false);
+
+drop policy if exists "Movimentações não podem ser excluídas via cliente" on stock_movements;
+create policy "Movimentações não podem ser excluídas via cliente"
+  on stock_movements for delete
+  using (false);

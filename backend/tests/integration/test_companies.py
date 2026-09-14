@@ -262,3 +262,18 @@ def test_convite_sem_autenticacao_retorna_401(make_test_client):
     )
 
     assert response.status_code == 401
+
+
+def test_admin_nao_pode_rebaixar_o_proprio_papel(monkeypatch, make_test_client, fake_client, make_authed_user):
+    admin_id = "a0000000-0000-0000-0000-000000000001"
+    admin_user = make_authed_user(fake_client, company_id="company-1", role="admin", user_id=admin_id)
+    client = make_test_client(admin=admin_user)
+
+    response = client.patch(
+        f"/companies/members/{admin_id}",
+        json={"role": "operador"},
+    )
+
+    assert response.status_code == 400
+    assert "Você não pode revogar seu próprio papel" in response.json()["detail"]
+

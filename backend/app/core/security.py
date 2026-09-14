@@ -73,7 +73,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha ao consultar perfil no Supabase: {exc}",
+            detail="Falha ao consultar perfil de usuário no banco de dados.",
         ) from exc
 
     return AuthedUser(

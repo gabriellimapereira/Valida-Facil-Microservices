@@ -100,23 +100,24 @@ from fastapi.responses import JSONResponse
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logging.exception("Exceção não tratada na rota %s: %s", request.url.path, exc)
+    detail = (
+        f"Erro interno ({type(exc).__name__}): {str(exc)}"
+        if not _is_prod
+        else "Ocorreu um erro interno no servidor. Tente novamente mais tarde."
+    )
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Erro interno ({type(exc).__name__}): {str(exc)}"},
+        content={"detail": detail},
     )
 
 
 @api_router.get("/health", tags=["Status"])
 def health():
-    anon = settings.supabase_anon_key or ""
-    serv = settings.supabase_service_role_key or ""
     return {
         "status": "ok",
         "has_supabase_url": bool(settings.supabase_url),
-        "anon_key_prefix": anon[:8] if anon else "",
-        "anon_key_len": len(anon),
-        "service_key_prefix": serv[:8] if serv else "",
-        "service_key_len": len(serv),
+        "has_anon_key": bool(settings.supabase_anon_key),
+        "has_service_key": bool(settings.supabase_service_role_key),
         "environment": settings.environment,
     }
 
