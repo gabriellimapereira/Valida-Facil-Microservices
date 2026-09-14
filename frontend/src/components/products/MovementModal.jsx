@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, SlidersHorizontal, X } from "lucide-react";
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Minus, Plus, X } from "lucide-react";
 import TactileButton from "../ui/TactileButton";
 
 const MAX_AMOUNT = 1_000_000;
@@ -8,7 +8,6 @@ const MAX_AMOUNT = 1_000_000;
 const TYPES = [
   { id: "entrada", label: "Entrada", icon: ArrowUpCircle, hint: "Quantidade recebida ou reposta (+)" },
   { id: "saida", label: "Saída", icon: ArrowDownCircle, hint: "Quantidade vendida ou consumida (-)" },
-  { id: "ajuste", label: "Ajuste", icon: SlidersHorizontal, hint: "Correção manual (delta positivo ou negativo)" },
 ];
 
 export default function MovementModal({ product, onClose, onSubmit }) {
@@ -19,20 +18,42 @@ export default function MovementModal({ product, onClose, onSubmit }) {
   const [submitting, setSubmitting] = useState(false);
 
   const numAmount = Number(amount) || 0;
-  const delta = type === "saida" ? -Math.abs(numAmount) : type === "entrada" ? Math.abs(numAmount) : numAmount;
+  const delta = type === "saida" ? -Math.abs(numAmount) : Math.abs(numAmount);
   const projectedQuantity = amount !== "" ? product.quantity + delta : product.quantity;
 
-  const handleKeyDown = (e) => {
-    if (type === "ajuste") {
-      // Ajuste pode ter sinal negativo, mas não expoentes nem decimais
-      if (["e", "E", "+", ".", ","].includes(e.key)) {
-        e.preventDefault();
-      }
+  const handleIncrement = () => {
+    const current = Number(amount) || 0;
+    if (current < MAX_AMOUNT) {
+      setAmount(String(current + 1));
+      setError("");
+    }
+  };
+
+  const handleDecrement = () => {
+    const current = Number(amount) || 0;
+    if (current > 1) {
+      setAmount(String(current - 1));
+      setError("");
     } else {
-      // Entrada e saída só aceitam dígitos positivos
-      if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-        e.preventDefault();
-      }
+      setAmount("");
+      setError("");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      handleIncrement();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      handleDecrement();
+      return;
+    }
+    // Entrada e saída só aceitam dígitos inteiros positivos
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+      e.preventDefault();
     }
   };
 
@@ -44,19 +65,10 @@ export default function MovementModal({ product, onClose, onSubmit }) {
       return;
     }
 
-    if (type === "ajuste") {
-      // Permite sinal negativo apenas no início
-      const isNeg = val.startsWith("-");
-      const digits = val.replace(/\D/g, "");
-      let num = Number(digits);
-      if (num > MAX_AMOUNT) num = MAX_AMOUNT;
-      val = digits === "" ? (isNeg ? "-" : "") : isNeg ? `-${num}` : `${num}`;
-    } else {
-      val = val.replace(/\D/g, "");
-      let num = Number(val);
-      if (num > MAX_AMOUNT) num = MAX_AMOUNT;
-      val = val === "" ? "" : `${num}`;
-    }
+    val = val.replace(/\D/g, "");
+    let num = Number(val);
+    if (num > MAX_AMOUNT) num = MAX_AMOUNT;
+    val = val === "" ? "" : `${num}`;
 
     setAmount(val);
     setError("");
@@ -66,17 +78,12 @@ export default function MovementModal({ product, onClose, onSubmit }) {
     e.preventDefault();
     const value = Number(amount);
 
-    if (amount === "" || amount === "-" || Number.isNaN(value)) {
-      setError("Informe uma quantidade válida.");
+    if (amount === "" || Number.isNaN(value) || value <= 0) {
+      setError("Informe uma quantidade válida maior que zero.");
       return;
     }
 
-    if (type !== "ajuste" && value <= 0) {
-      setError("Para entrada ou saída, informe um número inteiro maior que zero.");
-      return;
-    }
-
-    if (Math.abs(value) > MAX_AMOUNT) {
+    if (value > MAX_AMOUNT) {
       setError(`A quantidade não pode ultrapassar ${MAX_AMOUNT.toLocaleString("pt-BR")} unidades.`);
       return;
     }
@@ -154,7 +161,7 @@ export default function MovementModal({ product, onClose, onSubmit }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">Tipo de movimentação</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {TYPES.map((t) => {
                 const Icon = t.icon;
                 const isSelected = type === t.id;
@@ -164,17 +171,16 @@ export default function MovementModal({ product, onClose, onSubmit }) {
                     type="button"
                     onClick={() => {
                       setType(t.id);
-                      setAmount("");
                       setError("");
                     }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                    className={`flex flex-col items-center gap-1.5 py-3 px-3 rounded-xl border text-xs font-medium transition cursor-pointer ${
                       isSelected
-                        ? "border-amber-500 bg-amber-50/80 text-amber-900 font-bold shadow-xs"
+                        ? "border-amber-500 bg-amber-50/80 text-amber-900 font-bold shadow-xs ring-1 ring-amber-500/20"
                         : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
                     }`}
                   >
-                    <Icon size={18} className={isSelected ? "text-amber-600" : "text-slate-400"} />
-                    {t.label}
+                    <Icon size={20} className={isSelected ? "text-amber-600" : "text-slate-400"} />
+                    <span className="text-sm font-semibold">{t.label}</span>
                   </button>
                 );
               })}
@@ -184,20 +190,43 @@ export default function MovementModal({ product, onClose, onSubmit }) {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
-                {type === "ajuste" ? "Quantidade do ajuste (+ ou -)" : "Quantidade da operação"}
+              <label htmlFor="movement-amount-input" className="block text-xs font-semibold text-slate-700">
+                Quantidade da operação
               </label>
               <span className="text-[10px] text-slate-400 font-mono">máx 1.000.000</span>
             </div>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={amount}
-              onKeyDown={handleKeyDown}
-              onChange={handleAmountChange}
-              placeholder={type === "ajuste" ? "Ex: -3 ou 5" : "0"}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDecrement}
+                disabled={numAmount <= 0}
+                aria-label="Diminuir quantidade"
+                title="Diminuir (ou tecla ↓)"
+                className="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer active:scale-95 shadow-2xs select-none shrink-0"
+              >
+                <Minus size={18} />
+              </button>
+              <input
+                id="movement-amount-input"
+                type="text"
+                inputMode="numeric"
+                value={amount}
+                onKeyDown={handleKeyDown}
+                onChange={handleAmountChange}
+                placeholder="0"
+                className="flex-1 h-11 px-3.5 text-center rounded-xl border border-slate-200 text-base text-slate-900 font-bold font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+              />
+              <button
+                type="button"
+                onClick={handleIncrement}
+                disabled={numAmount >= MAX_AMOUNT}
+                aria-label="Aumentar quantidade"
+                title="Aumentar (ou tecla ↑)"
+                className="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer active:scale-95 shadow-2xs select-none shrink-0"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
           </div>
 
           <div>

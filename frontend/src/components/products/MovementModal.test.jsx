@@ -86,5 +86,55 @@ describe("MovementModal", () => {
       });
     });
   });
+
+  it("não exibe a opção de ajuste, contendo apenas Entrada e Saída", () => {
+    render(<MovementModal product={mockProduct} onClose={vi.fn()} onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /Entrada/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Saída/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ajuste/i })).not.toBeInTheDocument();
+  });
+
+  it("permite alterar a quantidade através dos botões de sobe e desce", () => {
+    render(<MovementModal product={mockProduct} onClose={vi.fn()} onSubmit={vi.fn()} />);
+
+    const incBtn = screen.getByRole("button", { name: /Aumentar quantidade/i });
+    const decBtn = screen.getByRole("button", { name: /Diminuir quantidade/i });
+    const amountInput = screen.getByPlaceholderText("0");
+
+    // Começa vazio, botão de diminuir deve estar desabilitado
+    expect(decBtn).toBeDisabled();
+
+    // Clica para aumentar
+    fireEvent.click(incBtn);
+    expect(amountInput.value).toBe("1");
+    expect(decBtn).not.toBeDisabled();
+
+    fireEvent.click(incBtn);
+    expect(amountInput.value).toBe("2");
+
+    // Clica para diminuir
+    fireEvent.click(decBtn);
+    expect(amountInput.value).toBe("1");
+
+    fireEvent.click(decBtn);
+    expect(amountInput.value).toBe("");
+    expect(decBtn).toBeDisabled();
+  });
+
+  it("permite alterar quantidade usando as setas do teclado (ArrowUp / ArrowDown)", () => {
+    render(<MovementModal product={mockProduct} onClose={vi.fn()} onSubmit={vi.fn()} />);
+
+    const amountInput = screen.getByPlaceholderText("0");
+
+    fireEvent.keyDown(amountInput, { key: "ArrowUp" });
+    expect(amountInput.value).toBe("1");
+
+    fireEvent.keyDown(amountInput, { key: "ArrowUp" });
+    expect(amountInput.value).toBe("2");
+
+    fireEvent.keyDown(amountInput, { key: "ArrowDown" });
+    expect(amountInput.value).toBe("1");
+  });
 });
 
