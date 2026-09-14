@@ -42,10 +42,18 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 Thumbs.db
+# IDEs, agentes e configurações locais
 .vscode/
 .idea/
+.agents/
 
 # Arquivos de rascunho locais
 fix.txt
 roteiro.md
 frontend/vite.config copy.js
+
+# Diagramas e Imagens de Arquitetura (Locais / Documentação)
+diagramas/
+docs/
+*.drawio
+/arquitetura*.png

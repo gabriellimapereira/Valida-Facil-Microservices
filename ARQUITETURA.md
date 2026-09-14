@@ -1,9 +1,9 @@
 # Arquitetura do Valida Fácil (Visão de Serviços & Camadas)
 
-- **Diagrama Esquemático (Estilo Folha / Desenho):** [`./arquitetura_esquema.png`](./arquitetura_esquema.png)
-- **Diagrama de Blocos Detalhado:** [`./arquitetura.png`](./arquitetura.png)
+- **Diagrama Esquemático (Estilo Folha / Desenho):** [`./diagramas/arquitetura_esquema.png`](./diagramas/arquitetura_esquema.png)
+- **Diagrama de Blocos Detalhado:** [`./diagramas/arquitetura.png`](./diagramas/arquitetura.png)
 
-![Diagrama Esquemático](./arquitetura_esquema.png)
+![Diagrama Esquemático](./diagramas/arquitetura_esquema.png)
 
 ```mermaid
 flowchart TB
