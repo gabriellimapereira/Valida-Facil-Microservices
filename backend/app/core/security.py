@@ -29,6 +29,7 @@ class AuthedUser:
     access_token: str
     client: Client  # já autenticado como este usuário — respeita RLS
     full_name: Optional[str] = None
+    store_id: Optional[str] = None
 
 
 def _extract_bearer_token(authorization: Optional[str]) -> str:
@@ -64,7 +65,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
     try:
         profile_resp = (
             client.table("profiles")
-            .select("company_id, role, full_name")
+            .select("company_id, role, full_name, store_id")
             .eq("id", user.id)
             .maybe_single()
             .execute()
@@ -82,6 +83,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
         company_id=profile_data.get("company_id"),
         role=profile_data.get("role"),
         full_name=profile_data.get("full_name"),
+        store_id=profile_data.get("store_id"),
         access_token=token,
         client=client,
     )

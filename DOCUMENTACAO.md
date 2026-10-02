@@ -58,39 +58,81 @@ Entidade tenant que agrupa produtos, colaboradores e movimentacoes.
 Vincula a conta de autenticacao do Supabase Auth (`auth.users`) a uma empresa e a um papel de acesso.
 - `id` (UUID, PK, REFERENCES `auth.users(id)` ON DELETE CASCADE): ID do usuario correspondente no modulo GoTrue.
 - `company_id` (UUID, REFERENCES `companies(id)` ON DELETE SET NULL): Empresa a qual o colaborador pertence. Valor nulo indica usuario em processo de onboarding.
+- `store_id` (UUID, REFERENCES `stores(id)` ON DELETE SET NULL): Filial a qual o colaborador esta alocado. Nulo se for Administrador do Armazem Central / Geral.
 - `full_name` (TEXT): Nome completo do colaborador.
 - `email` (TEXT): Endereco de e-mail do usuario.
 - `role` (TEXT, NOT NULL, DEFAULT 'operador'): Nivel de permissao ('admin' ou 'operador').
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data de inclusao do usuario.
 - Restricao Unica Parcial: `idx_one_admin_per_company` garante a existencia de no maximo um usuario com papel 'admin' por empresa.
 
+#### Tabela: `stores`
+Unidades fisicas ou filiais vinculadas a empresa tenant.
+- `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador da loja.
+- `company_id` (UUID, NOT NULL, REFERENCES `companies(id)` ON DELETE CASCADE): Vinculo tenant da organizacao.
+- `code` (TEXT, NOT NULL): Codigo ou sigla identificadora (ex: 'CENTRO-01').
+- `name` (TEXT, NOT NULL): Nome fantasia da filial (ex: 'Filial Centro').
+- `address` (TEXT): Endereco da filial.
+- `phone` (TEXT): Telefone de contato.
+- `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data de cadastro.
+- Restricao Unica: `(company_id, code)`.
+
+#### Tabela: `store_inventory`
+Saldo de estoque fisico local de cada filial para cada item do catalogo mestre.
+- `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador do saldo local.
+- `store_id` (UUID, NOT NULL, REFERENCES `stores(id)` ON DELETE CASCADE): Filial proprietaria do saldo.
+- `product_id` (UUID, NOT NULL, REFERENCES `products(id)` ON DELETE CASCADE): Item do catalogo.
+- `quantity` (INTEGER, NOT NULL, DEFAULT 0): Saldo fisico disponivel na gondola/loja.
+- `min_stock` (INTEGER, NOT NULL, DEFAULT 0): Ponto de pedido minimo estipulado para a loja.
+- `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Timestamp de atualizacao.
+- Restricao Unica: `(store_id, product_id)`.
+
+#### Tabela: `requisitions`
+Cabecalho das requisicoes de reposicao emitidas pelas filiais ao Armazem Central.
+- `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador da requisicao.
+- `company_id` (UUID, NOT NULL, REFERENCES `companies(id)` ON DELETE CASCADE): Empresa tenant.
+- `store_id` (UUID, NOT NULL, REFERENCES `stores(id)` ON DELETE CASCADE): Filial solicitante.
+- `requested_by` (UUID, REFERENCES `profiles(id)` ON DELETE SET NULL): Operador responsavel pelo pedido.
+- `status` (TEXT, NOT NULL, DEFAULT 'pendente'): Status do ciclo ('pendente', 'aprovada', 'despachada', 'recebida', 'cancelada').
+- `notes` (TEXT): Observacoes e especificacoes do pedido.
+- `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data de emissao.
+- `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data da ultima alteracao de status.
+
+#### Tabela: `requisition_items`
+Itens e quantidades discriminadas na requisicao de reposicao.
+- `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador do item da requisicao.
+- `requisition_id` (UUID, NOT NULL, REFERENCES `requisitions(id)` ON DELETE CASCADE): Vinculo com o cabecalho.
+- `product_id` (UUID, NOT NULL, REFERENCES `products(id)` ON DELETE CASCADE): Mercadoria requisitada.
+- `quantity_requested` (INTEGER, NOT NULL): Volume desejado pela loja.
+- `quantity_approved` (INTEGER): Volume validado/aprovado pelo Armazem Central.
+- Restricao Unica: `(requisition_id, product_id)`.
+
 #### Tabela: `products`
-Catalogo de mercadorias pertencentes a uma determinada empresa.
+Catalogo mestre de mercadorias e estoque do **Armazem Central (CD)**.
 - `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador do produto.
 - `company_id` (UUID, NOT NULL, REFERENCES `companies(id)` ON DELETE CASCADE): Vinculo tenant do item.
 - `code` (TEXT, NOT NULL): Codigo interno de identificacao (SKU).
 - `name` (TEXT, NOT NULL): Descricao completa do produto.
 - `category` (TEXT, NOT NULL, REFERENCES `categories(id)`): Chave estrangeira para a categoria correspondente.
 - `price` (NUMERIC(12,2), NOT NULL, DEFAULT 0): Preco unitario da mercadoria (Check: entre 0 e 1.000.000).
-- `quantity` (INTEGER, NOT NULL, DEFAULT 0): Saldo fisico disponivel em estoque (Check: entre 0 e 1.000.000).
-- `min_stock` (INTEGER, NOT NULL, DEFAULT 0): Quantidade minima estipulada para seguranca operacional (Check: entre 0 e 1.000.000).
-- `expiry` (DATE): Data limite de consumo ou validade da mercadoria.
+- `quantity` (INTEGER, NOT NULL, DEFAULT 0): Saldo fisico disponivel no Armazem Central (Check: entre 0 e 1.000.000).
+- `min_stock` (INTEGER, NOT NULL, DEFAULT 0): Quantidade minima estipulada para seguranca do CD.
+- `expiry` (DATE): Data limite de consumo ou validade do lote principal.
 - `supplier` (TEXT): Nome ou razao social do fornecedor parceiro.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data de inclusao.
-- `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data da ultima modificacao (atualizada automaticamente por trigger).
-- Restricao Unica: `(company_id, code)` impede codigos duplicados dentro da mesma organizacao.
+- `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Data da ultima modificacao.
+- Restricao Unica: `(company_id, code)`.
 
 #### Tabela: `stock_movements`
-Livro-razao de auditoria imutavel para registro de variacoes fisicas de estoque.
+Livro-razao de auditoria imutavel para registro de variacoes fisicas de estoque do Armazem Central.
 - `id` (UUID, PK, DEFAULT `uuid_generate_v4()`): Identificador do lancamento.
 - `company_id` (UUID, NOT NULL, REFERENCES `companies(id)` ON DELETE CASCADE): Empresa de origem.
 - `product_id` (UUID, NOT NULL, REFERENCES `products(id)` ON DELETE CASCADE): Mercadoria movimentada.
 - `changed_by` (UUID, REFERENCES `profiles(id)` ON DELETE SET NULL): Operador responsavel pela acao.
 - `movement_type` (TEXT, NOT NULL): Classificacao da operacao ('entrada' ou 'saida').
-- `quantity_delta` (INTEGER, NOT NULL): Variacao quantitativa aplicada (Check: entre -1.000.000 e 1.000.000, diferente de zero).
-- `previous_quantity` (INTEGER): Saldo existente imediatamente anterior a realizacao do lancamento.
-- `new_quantity` (INTEGER): Saldo resultante gravado no estoque do produto.
-- `note` (TEXT): Justificativa textual ou referencia documental (nota fiscal, pedido, motivo).
+- `quantity_delta` (INTEGER, NOT NULL): Variacao quantitativa aplicada.
+- `previous_quantity` (INTEGER): Saldo existente imediatamente anterior.
+- `new_quantity` (INTEGER): Saldo resultante gravado no estoque do armazem.
+- `note` (TEXT): Justificativa textual ou referencia documental (ex: transferencia para filial).
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT `now()`): Timestamp de efetivacao.
 
 ---
@@ -201,7 +243,73 @@ Remove um colaborador da equipe da empresa.
 
 ---
 
-### 3.2. Modulo de Movimentacoes de Estoque (`/movements`)
+### 3.2. Modulo de Lojas Filiais (`/stores`)
+
+#### `GET /stores`
+Lista todas as lojas filiais vinculadas a organizacao do usuario autenticado.
+- Permissao: Qualquer usuario com empresa vinculada.
+- Resposta: `200 OK` contendo lista de filiais (`id`, `name`, `code`, `address`, `phone`).
+
+#### `POST /stores`
+Cadastra uma nova filial fisica da rede.
+- Permissao: Restrito a usuarios com papel `admin`.
+- Payload:
+  ```json
+  {
+    "name": "Filial Shopping",
+    "code": "SHOP-01",
+    "address": "Av. Brasil, 500",
+    "phone": "(11) 98765-4321"
+  }
+  ```
+- Respostas: `201 Created` ou `409 Conflict` (se codigo ja existir).
+
+#### `GET /stores/{store_id}/inventory`
+Consulta o inventario local e saldos fisicos de produtos presentes naquela filial.
+- Permissao: Qualquer usuario com empresa vinculada.
+- Resposta: `200 OK` contendo itens com `product_id`, `product_name`, `product_code`, `quantity` e `min_stock`.
+
+#### `POST /stores/{store_id}/inventory/movement`
+Registra variacao fisica direta de estoque na loja (ex: venda ou quebra local).
+- Permissao: Qualquer usuario com empresa vinculada.
+- Payload: `{"product_id": "uuid", "quantity_delta": -5, "note": "Venda local"}`.
+- Respostas: `200 OK` ou `400 Bad Request` (se saldo insuficiente).
+
+---
+
+### 3.3. Modulo de Requisições de Reposição (`/requisitions`)
+
+#### `GET /requisitions`
+Lista as requisicoes emitidas pelas filiais ao Armazem Central com filtros opcionais por loja e status.
+- Permissao: Qualquer usuario com empresa vinculada (colaboradores vinculados a filial veem apenas pedidos de sua loja; administradores veem todos).
+- Parametros: `store_id` (opcional), `status` (opcional).
+- Resposta: `200 OK` contendo lista detalhada com itens e quantidades solicitadas/aprovadas.
+
+#### `POST /requisitions`
+Emissao de uma nova requisicao de reabastecimento da loja para o armazem.
+- Permissao: Qualquer usuario com empresa vinculada.
+- Payload:
+  ```json
+  {
+    "store_id": "uuid-da-filial",
+    "notes": "Reposicao semanal",
+    "items": [
+      { "product_id": "uuid-do-produto-1", "quantity_requested": 50 },
+      { "product_id": "uuid-do-produto-2", "quantity_requested": 20 }
+    ]
+  }
+  ```
+- Respostas: `201 Created` ou `404 Not Found`.
+
+#### `PATCH /requisitions/{requisition_id}/status`
+Atualiza a fase da requisicao. Quando o status enviado for `recebida`, dispara a procedure atomica `fulfill_requisition` que debita o Armazem Central e credita o estoque da loja.
+- Permissao: Qualquer usuario com empresa vinculada.
+- Payload: `{"status": "aprovada" | "despachada" | "recebida" | "cancelada"}`.
+- Respostas: `200 OK` ou `400 Bad Request` (ex: saldo insuficiente no armazem).
+
+---
+
+### 3.4. Modulo de Movimentacoes de Estoque (`/movements`)
 
 #### `POST /movements`
 Executa o lancamento transacional de entrada ou saida de mercadoria no estoque.
@@ -395,3 +503,4 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
    - O sistema utiliza o ORM/SDK nativo do PostgREST e procedimentos preparados no Postgres. Nao existem interpolacoes ou concatenacoes manuais de strings SQL no codigo.
 4. Isolamento Transacional:
    - Nenhuma atualizacao de quantidade de estoque e executada de forma solta; todo saldo e atualizado dentro da procedure `apply_stock_movement`.
+

@@ -50,3 +50,43 @@ export const MOCK_MEMBERS = [
   { id: "user-demo-3", fullName: "João Pedro Santos", email: "joao.estoque@emporioboasafra.com.br", role: "operador", createdAt: "2026-02-10T09:15:00Z" },
 ];
 
+export const MOCK_STORES = [
+  { id: "store-demo-1", companyId: "company-demo-1", name: "Filial Centro", code: "CENTRO-01", address: "Rua do Comércio, 120", phone: "(89) 3222-1100", createdAt: "2026-01-20T10:00:00Z" },
+  { id: "store-demo-2", companyId: "company-demo-1", name: "Filial Shopping Picos", code: "SHOP-02", address: "Av. Severo Eulálio, 500", phone: "(89) 3222-2200", createdAt: "2026-02-05T14:00:00Z" },
+];
+
+export const MOCK_REQUISITIONS = [
+  {
+    id: "req-demo-1",
+    companyId: "company-demo-1",
+    storeId: "store-demo-1",
+    storeName: "Filial Centro",
+    requestedBy: "user-demo-2",
+    requestedByName: "Mariana Souza",
+    status: "pendente",
+    notes: "Reposição de perecíveis para o final de semana",
+    createdAt: "2026-02-15T09:30:00Z",
+    updatedAt: "2026-02-15T09:30:00Z",
+    items: [
+      { id: "item-1", productId: "3", productName: "Leite Integral 1L (fardo)", productCode: "LAT-0231", quantityRequested: 15, quantityApproved: 15 },
+      { id: "item-2", productId: "4", productName: "Pão de Forma Integral", productCode: "PAO-0087", quantityRequested: 20, quantityApproved: 20 },
+    ],
+  },
+  {
+    id: "req-demo-2",
+    companyId: "company-demo-1",
+    storeId: "store-demo-2",
+    storeName: "Filial Shopping Picos",
+    requestedBy: "user-demo-3",
+    requestedByName: "João Pedro Santos",
+    status: "despachada",
+    notes: "Reposição de eletrônicos",
+    createdAt: "2026-02-14T16:00:00Z",
+    updatedAt: "2026-02-14T17:30:00Z",
+    items: [
+      { id: "item-3", productId: "14", productName: "Fone Bluetooth TWS", productCode: "ELE-3010", quantityRequested: 10, quantityApproved: 10 },
+    ],
+  },
+];
+
+

@@ -6,6 +6,8 @@ import SetPasswordPage from "../pages/SetPasswordPage";
 import OnboardingPage from "../pages/OnboardingPage";
 import DashboardPage from "../pages/DashboardPage";
 import StockPage from "../pages/StockPage";
+import StoresPage from "../pages/StoresPage";
+import RequisitionsPage from "../pages/RequisitionsPage";
 import ProfilePage from "../pages/ProfilePage";
 import NotFoundPage from "../pages/NotFoundPage";
 import AppShell from "../components/layout/AppShell";
@@ -47,6 +49,8 @@ export default function AppRoutes() {
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/estoque" element={<StockPage />} />
+            <Route path="/lojas" element={<StoresPage />} />
+            <Route path="/requisicoes" element={<RequisitionsPage />} />
             <Route path="/perfil" element={<ProfilePage />} />
           </Route>
         </Route>

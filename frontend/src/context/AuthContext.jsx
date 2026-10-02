@@ -65,6 +65,9 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
+    await authService.logout();
+    setUser(null);
+    setProfile(null);
     try {
       await authService.logout();
     } finally {

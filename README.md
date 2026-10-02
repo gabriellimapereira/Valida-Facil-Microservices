@@ -201,3 +201,4 @@ npm run build
 ## 7. Informacoes Complementares
 
 Para informacoes aprofundadas sobre o dicionario de dados, especificacao de contratos REST, politicas de seguranca detalhadas e arquitetura de componentes, consulte o arquivo [DOCUMENTACAO.md](./DOCUMENTACAO.md).
+

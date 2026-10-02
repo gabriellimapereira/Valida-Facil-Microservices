@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Package, Settings, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, LayoutDashboard, LogOut, Package, Settings, Store, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import BrandLogo from "../ui/BrandLogo";
 import CompanyLogo from "../ui/CompanyLogo";
@@ -8,7 +8,9 @@ import ConfirmationModal from "../ui/ConfirmationModal";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/estoque", label: "Estoque", icon: Package },
+  { to: "/estoque", label: "Armazém Central", icon: Package },
+  { to: "/lojas", label: "Lojas & Filiais", icon: Store },
+  { to: "/requisicoes", label: "Requisições", icon: ClipboardList },
   { to: "/perfil", label: "Perfil & Config.", icon: Settings },
 ];
 

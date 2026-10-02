@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.core.scheduler import register_jobs, scheduler
-from app.routers import alerts, companies, movements, reports
+from app.routers import alerts, companies, movements, reports, requisitions, stores
 
 logging.basicConfig(level=logging.INFO)
 
@@ -89,7 +89,9 @@ async def add_security_headers(request: Request, call_next):
 
 api_router = APIRouter()
 api_router.include_router(companies.router, prefix="/companies", tags=["Empresas"])
+api_router.include_router(stores.router, prefix="/stores", tags=["Lojas"])
 api_router.include_router(movements.router, prefix="/movements", tags=["Movimentações"])
+api_router.include_router(requisitions.router, prefix="/requisitions", tags=["Requisições"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alertas"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Relatórios"])
 

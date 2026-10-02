@@ -92,10 +92,15 @@ describe("ProductFilters", () => {
   });
 
   it("bloqueia a seleção de dataTo se for anterior a dateFrom", () => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dateFrom = `${yyyy}-${mm}-15`;
+
     const setFilters = vi.fn();
     render(
       <ProductFilters
-        filters={{ ...defaultFilters, dateFrom: "2026-09-15" }}
+        filters={{ ...defaultFilters, dateFrom }}
         setFilters={setFilters}
         filtersOpen={true}
         setFiltersOpen={vi.fn()}
@@ -108,7 +113,7 @@ describe("ProductFilters", () => {
     const triggers = screen.getAllByText("dd/mm/aaaa");
     fireEvent.click(triggers[0]);
 
-    // O dia 10 de setembro (anterior a 15/09/2026) deve estar desabilitado
+    // O dia 10 do mês (anterior ao dia 15) deve estar desabilitado
     const day10Buttons = screen.getAllByRole("button", { name: "10" });
     const disabledDay10 = day10Buttons.find((btn) => btn.disabled);
     expect(disabledDay10).toBeDefined();
