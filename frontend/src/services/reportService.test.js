@@ -2,20 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockPost = vi.fn();
 vi.mock("../lib/apiClient", () => ({
+  getAccessToken: () => null,
   apiClient: { post: (...args) => mockPost(...args) },
-}));
-
-vi.mock("../lib/supabaseClient", () => ({
-  isSupabaseConfigured: false,
-  supabase: null,
 }));
 
 import { generateReport } from "./reportService";
 
 beforeEach(() => {
   mockPost.mockReset();
-  global.URL.createObjectURL = vi.fn(() => "blob:http://localhost/fake-pdf");
-  global.URL.revokeObjectURL = vi.fn();
+  globalThis.URL.createObjectURL = vi.fn(() => "blob:http://localhost/fake-pdf");
+  globalThis.URL.revokeObjectURL = vi.fn();
 });
 
 describe("generateReport", () => {

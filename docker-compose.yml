@@ -1,0 +1,250 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: valida-facil-broker
+    expose:
+      - "5672"
+    ports:
+      - "127.0.0.1:15672:15672"
+    networks:
+      - app-network
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-validafacil}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-validafacil123}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-identity:
+    image: postgres:16-alpine
+    container_name: valida-facil-db-identity
+    environment:
+      POSTGRES_DB: valida_identity
+      POSTGRES_USER: ${DB_IDENTITY_USER:-valida_identity}
+      POSTGRES_PASSWORD: ${DB_IDENTITY_PASSWORD:-local_identity_password}
+    volumes:
+      - ./database/identity:/docker-entrypoint-initdb.d:ro
+      - pg_identity_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5435:5432"
+    networks:
+      - identity-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_IDENTITY_USER:-valida_identity} -d valida_identity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-warehouse:
+    image: postgres:16-alpine
+    container_name: valida-facil-db-warehouse
+    environment:
+      POSTGRES_DB: valida_warehouse
+      POSTGRES_USER: ${DB_WAREHOUSE_USER:-valida_warehouse}
+      POSTGRES_PASSWORD: ${DB_WAREHOUSE_PASSWORD:-local_warehouse_password}
+    volumes:
+      - ./database/warehouse:/docker-entrypoint-initdb.d:ro
+      - pg_warehouse_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - warehouse-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_WAREHOUSE_USER:-valida_warehouse} -d valida_warehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-stores:
+    image: postgres:16-alpine
+    container_name: valida-facil-db-stores
+    environment:
+      POSTGRES_DB: valida_stores
+      POSTGRES_USER: ${DB_STORES_USER:-valida_stores}
+      POSTGRES_PASSWORD: ${DB_STORES_PASSWORD:-local_stores_password}
+    volumes:
+      - ./database/stores:/docker-entrypoint-initdb.d:ro
+      - pg_stores_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5434:5432"
+    networks:
+      - stores-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_STORES_USER:-valida_stores} -d valida_stores"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ms-identity:
+    build:
+      context: .
+      dockerfile: ms-identity/Dockerfile
+    container_name: valida-facil-ms-identity
+    env_file:
+      - ./.env
+    environment:
+      PORT: "8001"
+      SERVICE_NAME: identity
+      DATABASE_URL: postgresql://${DB_IDENTITY_USER:-valida_identity}:${DB_IDENTITY_PASSWORD:-local_identity_password}@db-identity:5432/valida_identity
+      IDENTITY_DATABASE_URL: ""
+      WAREHOUSE_DATABASE_URL: ""
+      STORES_DATABASE_URL: ""
+      STORES_SERVICE_URL: http://ms-stores:8003
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-validafacil}:${RABBITMQ_PASS:-validafacil123}@rabbitmq:5672/
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage_data:/app/storage
+    networks:
+      - app-network
+      - identity-db
+    expose:
+      - "8001"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-identity:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  ms-warehouse:
+    build:
+      context: .
+      dockerfile: ms-warehouse/Dockerfile
+    container_name: valida-facil-ms-warehouse
+    env_file:
+      - ./.env
+    environment:
+      PORT: "8002"
+      SERVICE_NAME: warehouse
+      DATABASE_URL: postgresql://${DB_WAREHOUSE_USER:-valida_warehouse}:${DB_WAREHOUSE_PASSWORD:-local_warehouse_password}@db-warehouse:5432/valida_warehouse
+      IDENTITY_DATABASE_URL: ""
+      WAREHOUSE_DATABASE_URL: ""
+      STORES_DATABASE_URL: ""
+      IDENTITY_SERVICE_URL: http://ms-identity:8001
+      STORES_SERVICE_URL: http://ms-stores:8003
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-validafacil}:${RABBITMQ_PASS:-validafacil123}@rabbitmq:5672/
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage_data:/app/storage
+    networks:
+      - app-network
+      - warehouse-db
+    expose:
+      - "8002"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-warehouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  ms-stores:
+    build:
+      context: .
+      dockerfile: ms-stores/Dockerfile
+    container_name: valida-facil-ms-stores
+    env_file:
+      - ./.env
+    environment:
+      PORT: "8003"
+      SERVICE_NAME: stores
+      DATABASE_URL: postgresql://${DB_STORES_USER:-valida_stores}:${DB_STORES_PASSWORD:-local_stores_password}@db-stores:5432/valida_stores
+      IDENTITY_DATABASE_URL: ""
+      WAREHOUSE_DATABASE_URL: ""
+      STORES_DATABASE_URL: ""
+      IDENTITY_SERVICE_URL: http://ms-identity:8001
+      WAREHOUSE_SERVICE_URL: http://ms-warehouse:8002
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-validafacil}:${RABBITMQ_PASS:-validafacil123}@rabbitmq:5672/
+    expose:
+      - "8003"
+    networks:
+      - app-network
+      - stores-db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-stores:
+        condition: service_healthy
+      ms-identity:
+        condition: service_started
+      ms-warehouse:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: valida-facil-gateway
+    env_file:
+      - ./.env
+    environment:
+      PORT: "8000"
+      SERVICE_NAME: gateway
+      DATABASE_URL: ""
+      IDENTITY_DATABASE_URL: ""
+      WAREHOUSE_DATABASE_URL: ""
+      STORES_DATABASE_URL: ""
+      IDENTITY_SERVICE_URL: http://ms-identity:8001
+      WAREHOUSE_SERVICE_URL: http://ms-warehouse:8002
+      STORES_SERVICE_URL: http://ms-stores:8003
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-validafacil}:${RABBITMQ_PASS:-validafacil123}@rabbitmq:5672/
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage_data:/app/storage
+    networks:
+      - app-network
+    ports:
+      - "8000:8000"
+    depends_on:
+      ms-identity:
+        condition: service_healthy
+      ms-warehouse:
+        condition: service_healthy
+      ms-stores:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: valida-facil-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - app-network
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+volumes:
+  pg_identity_data:
+  pg_warehouse_data:
+  pg_stores_data:
+  storage_data:
+
+networks:
+  app-network:
+  identity-db:
+  warehouse-db:
+  stores-db:

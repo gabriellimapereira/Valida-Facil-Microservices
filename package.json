@@ -1,0 +1,15 @@
+{
+  "name": "valida-facil-microservices",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Valida Fácil — Arquitetura de Microsserviços e Frontend React",
+  "scripts": {
+    "dev:backend": "./scripts/run_local.sh",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "test:backend": ".venv/bin/pytest tests/",
+    "test:frontend": "npm test --prefix frontend -- --run",
+    "test": "npm run test:backend && npm run test:frontend",
+    "lint:frontend": "npm run lint --prefix frontend",
+    "format:backend": ".venv/bin/ruff format ms-identity ms-warehouse ms-stores api-gateway shared tests scripts"
+  }
+}

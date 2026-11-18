@@ -1,5 +1,4 @@
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
-import { apiClient } from "../lib/apiClient";
+import { apiClient, getAccessToken } from "../lib/apiClient";
 import { MOCK_COMPANY, MOCK_MEMBERS } from "../data/mockData";
 
 let memoryCompany = { ...MOCK_COMPANY };
@@ -45,45 +44,28 @@ function toDb(fields) {
 }
 
 export async function fetchCompany(companyId) {
-  if (!isSupabaseConfigured) {
+  if (!getAccessToken()) {
     return Promise.resolve({ ...memoryCompany });
   }
   if (!companyId) return null;
-
-  const { data, error } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("id", companyId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return fromDb(data);
+  return fromDb(await apiClient.get("/companies/me"));
 }
 
 // Criar empresa precisa da chave service_role (o usuário ainda não tem
 // company_id, então o RLS bloquearia legitimamente a escrita) — por isso
-// essa chamada específica passa pelo backend, não vai direto ao Supabase.
+// essa chamada específica passa pelo backend, não acessa o banco diretamente.
 export async function createCompany(fields) {
   const payload = toDb(fields);
   const data = await apiClient.post("/companies", payload);
   return fromDb(data);
 }
 
-export async function updateCompany(companyId, changes) {
-  if (!isSupabaseConfigured) {
+export async function updateCompany(_companyId, changes) {
+  if (!getAccessToken()) {
     memoryCompany = { ...memoryCompany, ...changes };
     return Promise.resolve({ ...memoryCompany });
   }
-
-  const { data, error } = await supabase
-    .from("companies")
-    .update(toDb(changes))
-    .eq("id", companyId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return fromDb(data);
+  return fromDb(await apiClient.patch("/companies/me", toDb(changes)));
 }
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
@@ -100,101 +82,97 @@ export async function uploadCompanyLogo(companyId, file) {
     throw new Error("A imagem deve ter no máximo 3MB.");
   }
 
-  if (!isSupabaseConfigured) {
+  if (!getAccessToken()) {
     const localUrl = URL.createObjectURL(file);
     memoryCompany = { ...memoryCompany, logoUrl: localUrl };
     return { ...memoryCompany };
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-  const path = `${companyId}/logo_${Date.now()}.${ext}`;
-
-  // 1. Upload da imagem para o bucket "logos"
-  const { error: uploadError } = await supabase.storage
-    .from("logos")
-    .upload(path, file, {
-      upsert: true,
-      contentType: file.type,
-      cacheControl: "3600",
-    });
-
-  if (uploadError) throw new Error(`Falha ao fazer upload da imagem: ${uploadError.message}`);
-
-  // 2. Obter a URL pública permanente
-  const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path);
-  const publicUrl = urlData?.publicUrl;
-
-  if (!publicUrl) throw new Error("Não foi possível gerar a URL pública da imagem.");
-
-  // 3. Atualizar o registro da empresa no banco
-  return updateCompany(companyId, { logoUrl: publicUrl });
+  const formData = new FormData();
+  formData.append("file", file);
+  return fromDb(await apiClient.postFormData("/companies/logo", formData));
 }
 
-export async function removeCompanyLogo(companyId) {
-  return updateCompany(companyId, { logoUrl: null });
+export async function removeCompanyLogo() {
+  if (!getAccessToken()) {
+    memoryCompany = { ...memoryCompany, logoUrl: null };
+    return { ...memoryCompany };
+  }
+  return fromDb(await apiClient.delete("/companies/logo"));
 }
 
 let memoryMembers = [...MOCK_MEMBERS];
 
 export async function fetchCompanyMembers(companyId) {
-  if (!isSupabaseConfigured) {
+  if (!getAccessToken()) {
     return Promise.resolve([...memoryMembers]);
   }
   if (!companyId) return [];
 
-  // 1. Tenta consulta direta no Supabase (instantânea com RLS)
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, role, created_at")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: true });
-
-    if (!error && data && data.length > 0) {
-      return data.map((row) => ({
-        id: row.id,
-        fullName: row.full_name || row.email,
-        email: row.email,
-        role: row.role,
-        createdAt: row.created_at,
-      }));
-    }
-  } catch (err) {
-    console.warn("Consulta direta de colaboradores falhou, usando fallback da API:", err);
-  }
-
-  // 2. Fallback via backend se necessário
-  return apiClient.get("/companies/members");
+  const members = await apiClient.get("/companies/members");
+  return (members || []).map((row) => ({
+    id: row.id,
+    fullName: row.full_name || row.fullName || row.email,
+    email: row.email,
+    role: row.role,
+    storeId: row.store_id ?? row.storeId ?? null,
+    storeName: row.store_name ?? row.storeName ?? null,
+    createdAt: row.created_at || row.createdAt,
+  }));
 }
 
-export async function inviteTeamMember({ email, fullName, role = "operador" }) {
-  if (!isSupabaseConfigured) {
+export async function inviteTeamMember({ email, fullName, role = "operador", storeId = null }) {
+  if (!getAccessToken()) {
     const newMember = {
       id: `user-demo-${Date.now()}`,
       fullName,
       email,
       role,
+      storeId: storeId || null,
       createdAt: new Date().toISOString(),
     };
     memoryMembers.push(newMember);
     return Promise.resolve(newMember);
   }
-  return apiClient.post("/companies/invite", { email, full_name: fullName, role });
+  const payload = { email, full_name: fullName, role };
+  if (storeId) payload.store_id = storeId;
+  return apiClient.post("/companies/invite", payload);
+}
+
+export async function updateMember(memberId, { role, storeId } = {}) {
+  if (!getAccessToken()) {
+    memoryMembers = memoryMembers.map((m) =>
+      m.id === memberId
+        ? {
+            ...m,
+            ...(role !== undefined ? { role } : {}),
+            ...(storeId !== undefined ? { storeId } : {}),
+          }
+        : m
+    );
+    return Promise.resolve(memoryMembers.find((m) => m.id === memberId));
+  }
+  const payload = {};
+  if (role !== undefined) payload.role = role;
+  if (storeId !== undefined) payload.store_id = storeId || null;
+  const updated = await apiClient.patch(`/companies/members/${memberId}`, payload);
+  return {
+    ...updated,
+    fullName: updated.full_name || updated.email,
+    storeId: updated.store_id ?? null,
+    storeName: updated.store_name ?? null,
+    createdAt: updated.created_at,
+  };
 }
 
 export async function updateMemberRole(memberId, role) {
-  if (!isSupabaseConfigured) {
-    memoryMembers = memoryMembers.map((m) => (m.id === memberId ? { ...m, role } : m));
-    return Promise.resolve(memoryMembers.find((m) => m.id === memberId));
-  }
-  return apiClient.patch(`/companies/members/${memberId}`, { role });
+  return updateMember(memberId, { role });
 }
 
 export async function removeMember(memberId) {
-  if (!isSupabaseConfigured) {
+  if (!getAccessToken()) {
     memoryMembers = memoryMembers.filter((m) => m.id !== memberId);
     return Promise.resolve();
   }
   return apiClient.delete(`/companies/members/${memberId}`);
 }
-

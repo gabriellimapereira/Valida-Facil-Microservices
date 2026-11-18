@@ -61,9 +61,19 @@ export function ProductProvider({ children }) {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, quantity: newQuantity } : p)));
   };
 
+  const refreshProducts = async () => {
+    if (!isAuthenticated || !companyId) {
+      setProducts([]);
+      return [];
+    }
+    const data = await productService.fetchProducts(companyId);
+    setProducts(data);
+    return data;
+  };
+
   return (
     <ProductContext.Provider
-      value={{ products, loading, addProduct, editProduct, removeProduct, syncProductQuantity }}
+      value={{ products, loading, addProduct, editProduct, removeProduct, syncProductQuantity, refreshProducts }}
     >
       {children}
     </ProductContext.Provider>

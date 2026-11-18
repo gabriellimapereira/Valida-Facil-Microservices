@@ -19,7 +19,7 @@ O Valida Facil e uma plataforma corporativa desenvolvida para gerenciar fluxos d
 
 ## 2. Arquitetura e Tecnologias
 
-A solucao adota uma arquitetura desacoplada, combinando servicos serverless para APIs de negocio e recursos de Backend as a Service (BaaS) para persistencia e autenticacao.
+A solução separa APIs de negócio em microsserviços, com PostgreSQL independente para cada domínio (Database-per-Service) e Object Storage padronizado (volume compartilhado ou MinIO S3).
 
 ### Camada de Apresentacao (Frontend)
 - React 18 com Vite
@@ -36,11 +36,11 @@ A solucao adota uma arquitetura desacoplada, combinando servicos serverless para
 - APScheduler para rotinas em desenvolvimento local e Vercel Cron para automacoes em producao
 
 ### Persistencia e Seguranca (Banco de Dados)
-- PostgreSQL gerenciado via Supabase
-- Row Level Security (RLS) aplicado a 100% das tabelas para garantia de isolamento entre empresas
+- PostgreSQL com isolamento Database-per-Service: Identity, Warehouse e Stores têm bancos próprios
+- Autenticação local por JWT nativo e RBAC/multi-tenant aplicado pelos serviços
 - Funcoes PL/pgSQL atomicas para operacoes criticas de saldo
-- Supabase Auth (GoTrue) com emissao de tokens JWT
-- Supabase Storage com buckets privados e distribuicao via URLs assinadas de curta duracao
+- Object Storage nativo por volume compartilhado (`/app/storage`) e MinIO (compatível com S3)
+- Autenticação nativa por JWT no MS Identity e controle de acesso RBAC distribuído
 
 ---
 
@@ -48,11 +48,11 @@ A solucao adota uma arquitetura desacoplada, combinando servicos serverless para
 
 A seguranca da informacao e o pilar central da arquitetura do Valida Facil:
 
-- Isolamento Multi-Tenant: Cada requisicao ao banco de dados executa sob o contexto de seguranca do usuario logado (RLS). Nao ha possibilidade de vazamento de dados entre empresas distintas, mesmo sob falha na camada de aplicacao.
+- Isolamento Multi-Tenant: as rotas validam empresa e perfil; o escopo dos dados é aplicado pelo microsserviço proprietário de cada banco.
 - Controle de Acesso Baseado em Funcoes (RBAC):
   - Administrador: Gestao cadastral da empresa, convite de membros, alteracao de papeis de colaboradores, exclusao de registros e emissao de relatorios.
   - Operador: Consulta ao catalogo de produtos, registro de entradas e saidas de itens e acompanhamento de alertas de validade.
-- Protecao contra Escalada de Privilegios: Triggers e politicas de banco impedem que usuarios alterem seu proprio nivel de acesso ou sua vinculacao empresarial via cliente.
+- Proteção contra escalada de privilégios: operações de perfil e permissões são autorizadas pelo MS Identity; os clientes não recebem credenciais diretas dos bancos.
 - Historico Imutavel: A tabela de movimentacoes de estoque bloqueia operacoes de edicao e delecao por clientes HTTP comuns.
 - Cabecalhos de Seguranca HTTP: Middleware ativo aplicando Strict-Transport-Security (HSTS), X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Referrer-Policy e politicas restritivas de permissoes.
 - Sanitizacao de Respostas: O backend trata globalmente qualquer excecao nao mapeada, prevenindo o vazamento de stack traces, estruturas de schemas ou mensagens de drivers internos.
@@ -63,34 +63,37 @@ A seguranca da informacao e o pilar central da arquitetura do Valida Facil:
 
 ```text
 .
-|-- backend/
-|   |-- app/
-|   |   |-- core/             # Configuracoes de seguranca, scheduler e clients
-|   |   |-- routers/          # Endpoints da API (empresas, estoque, alertas, relatorios)
-|   |   |-- schemas/          # Modelos Pydantic de entrada e saida
-|   |   |-- services/         # Regras de negocio, e-mail, PDF e persistencia
-|   |   |-- templates/        # Templates Jinja2 para e-mails transacionais e relatorios
-|   |   `-- utils/            # Formatadores e helpers auxiliares
-|   |-- supabase/             # Scripts SQL de funcoes, schemas e politicas RLS
-|   |-- tests/                # Testes automatizados (unitarios e de integracao)
-|   |-- Dockerfile            # Imagem de producao para execucao conteinerizada
-|   `-- requirements.txt      # Dependencias do ecossistema Python
+|-- api-gateway/              # Ponto de entrada unico (FastAPI + proxy HTTP/ASGI)
+|   |-- gateway/              # Roteamento por prefixo, headers e CORS
+|   |-- Dockerfile            # Imagem leve e isolada do Gateway
+|   `-- requirements.txt
 |
-|-- frontend/
-|   |-- public/               # Assets estaticos, manifestos e icones oficiais
-|   |-- src/
-|   |   |-- components/       # Componentes de interface (layout, produtos, perfil, UI)
-|   |   |-- context/          # Provedores de estado global (Auth, Product, Toast)
-|   |   |-- pages/            # Telas da aplicacao (Dashboard, Estoque, Perfil, Login, etc.)
-|   |   |-- routes/           # Rotas protegidas e guardas de navegacao
-|   |   |-- services/         # Integracoes com backend e Supabase Client
-|   |   `-- utils/            # Formatadores monetarios, de datas e validacoes
-|   `-- supabase/             # Schemas e migracoes do banco de dados
+|-- ms-identity/              # Microsservico de Identidade, Empresas e Membros
+|   |-- ms_identity/
+|   |-- Dockerfile
+|   `-- requirements.txt
 |
-|-- diagramas/                # Diagramas arquiteturais e esquemas conceituais (ignorado no Git)
+|-- ms-warehouse/             # Microsservico do Armazem Central, FEFO, Alertas e Relatorios
+|   |-- ms_warehouse/
+|   |-- Dockerfile
+|   `-- requirements.txt
+|
+|-- ms-stores/                # Microsservico de Lojas / Filiais e Requisicoes (SAGA)
+|   |-- ms_stores/
+|   |-- Dockerfile
+|   `-- requirements.txt
+|
+|-- shared/                   # Pacote compartilhado (config, JWT, Storage, HTTP client, broker)
+|-- database/                  # Schemas e migrações PostgreSQL independentes por serviço
+|-- frontend/                 # Aplicacao React + Vite (SPA + Nginx + Vitest)
+|-- tests/                    # Suite unificada de testes (unitarios, integracao e arquitetura)
+|-- docker-compose.yml        # Topologia conteinerizada (RabbitMQ + Gateway + 3 MS + Frontend)
+|-- pytest.ini                # Configuracao de pythonpath multi-servico para testes
+|-- .env.example              # Modelo sanitizado de variaveis de ambiente na raiz
 |-- DOCUMENTACAO.md           # Manual tecnico aprofundado do sistema
+|-- DOCUMENTACAO_MICROSSERVICOS.md # Guia da arquitetura distribuida e protocolos
 |-- README.md                 # Guia executivo e documentacao inicial
-`-- vercel.json               # Configuracao de roteamento monorepo e Vercel Cron
+`-- vercel.json               # Configuracao de roteamento Vercel e Vercel Cron
 ```
 
 ---
@@ -99,32 +102,37 @@ A seguranca da informacao e o pilar central da arquitetura do Valida Facil:
 
 ### Pre-requisitos
 - Node.js versao 18 ou superior
-- Python versao 3.11 ou superior
-- Projeto ativo no Supabase (com schema executado)
+- Docker e Docker Compose
 
-### 5.1. Configuracao do Banco de Dados
-Acesse o SQL Editor no painel do Supabase e execute o script consolidado:
-`frontend/supabase/schema.sql`
+### 5.1. Configuracao dos Bancos de Dados Locais
+O modo local usa três instâncias PostgreSQL independentes: `db-identity`, `db-warehouse` e `db-stores`.
+O Docker Compose inicializa cada banco com seu próprio script em `database/{identity,warehouse,stores}/init.sql`.
+O banco da aplicação é sempre PostgreSQL separado por serviço (`db-identity`, `db-warehouse` e `db-stores`), com total autonomia de esquemas e persistência.
 
-Em seguida, execute as configuracoes de armazenamento:
-`backend/supabase/storage.sql`
-
-### 5.2. Configuracao do Backend
-Navegue ate a pasta do backend, crie o ambiente virtual e instale os pacotes necessarios:
+Em volumes Identity criados antes da migração de tokens de convite e redefinição de senha, aplique-a uma vez com o banco em execução:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+docker compose exec -T db-identity psql -U valida_identity -d valida_identity < database/identity/migrations/001_auth_action_tokens.sql
 ```
 
-Crie o arquivo `.env` na pasta `backend/` com as seguintes variaveis:
+O comando usa o usuário padrão do Compose; se `DB_IDENTITY_USER` foi personalizado, substitua `valida_identity` pelo usuário configurado. Bancos recém-criados já recebem essa tabela via `init.sql`.
+
+### 5.2. Configuracao do Backend (Microsservicos)
+Na raiz do repositorio, crie o ambiente virtual e instale as dependencias de desenvolvimento/testes (ou as dependencias individuais de cada microsservico):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+Copie `.env.example` para `.env` na raiz do repositorio. O arquivo já contém as URLs locais distintas; personalize somente os segredos e integrações que desejar:
 
 ```env
-SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_ANON_KEY=sua-chave-anonima
-SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
+IDENTITY_DATABASE_URL=postgresql://valida_identity:local_identity_password@localhost:5435/valida_identity
+WAREHOUSE_DATABASE_URL=postgresql://valida_warehouse:local_warehouse_password@localhost:5433/valida_warehouse
+STORES_DATABASE_URL=postgresql://valida_stores:local_stores_password@localhost:5434/valida_stores
+JWT_SECRET=troque-por-um-segredo-jwt-forte
 FRONTEND_URL=http://localhost:5173
 ENVIRONMENT=development
 CRON_SECRET=segredo-para-execucao-de-cron
@@ -138,11 +146,13 @@ SMTP_FROM_EMAIL=no-reply@validafacil.com.br
 SMTP_FROM_NAME=Valida Facil
 ```
 
-Inicie o servidor de desenvolvimento:
+Inicie a topologia local completa. Cada serviço recebe apenas a URL do seu banco:
 
 ```bash
-uvicorn app.main:app --reload --port 8000
+docker compose up --build
 ```
+
+O Gateway ficará disponível em `http://localhost:8000`; o frontend em `http://localhost:3000`. As portas PostgreSQL locais são `5435` (Identity), `5433` (Warehouse) e `5434` (Stores). Para executar os serviços Python diretamente no host, use as três URLs `*_DATABASE_URL` e inicie cada microsserviço como processo separado.
 
 ### 5.3. Configuracao do Frontend
 Em outro terminal, acesse a pasta do frontend e instale as dependencias:
@@ -155,8 +165,6 @@ npm install
 Crie o arquivo `.env` na pasta `frontend/`:
 
 ```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
@@ -172,12 +180,11 @@ Acesse o endereco `http://localhost:5173` em seu navegador.
 
 ## 6. Execucao de Testes e Validacao de Codigo
 
-### Testes do Backend
-Para rodar a suite completa de testes unitarios e de integracao do backend:
+### Testes dos Microsservicos e Gateway
+Para rodar a suite completa de testes unitarios, de integracao e de arquitetura a partir da raiz do projeto:
 
 ```bash
-cd backend
-./.venv/bin/pytest
+pytest -v tests/
 ```
 
 ### Testes do Frontend
@@ -201,4 +208,3 @@ npm run build
 ## 7. Informacoes Complementares
 
 Para informacoes aprofundadas sobre o dicionario de dados, especificacao de contratos REST, politicas de seguranca detalhadas e arquitetura de componentes, consulte o arquivo [DOCUMENTACAO.md](./DOCUMENTACAO.md).
-

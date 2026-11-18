@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 import BrandLogo from "../components/ui/BrandLogo";
 import { useToast } from "../context/ToastContext";
@@ -15,6 +15,7 @@ import TactileButton from "../components/ui/TactileButton";
 export default function SetPasswordPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [checkingLink, setCheckingLink] = useState(true);
   const [linkValid, setLinkValid] = useState(false);
@@ -24,47 +25,28 @@ export default function SetPasswordPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const token = searchParams.get("token") || "";
 
   useEffect(() => {
     let mounted = true;
-
-    authService.getSessionUser().then((user) => {
-      if (mounted && user) {
-        setLinkValid(true);
-        setCheckingLink(false);
-      }
-    }).catch(() => {});
-
-    const subscription = authService.onAuthStateChange
-      ? authService.onAuthStateChange((user) => {
-          if (mounted && user) {
-            setLinkValid(true);
-            setCheckingLink(false);
-          }
-        })
-      : null;
-
-    const timer = setTimeout(async () => {
-      try {
-        const user = await authService.getSessionUser();
+    authService.validateActionToken(token, "invitation")
+      .then((valid) => {
         if (mounted) {
-          setLinkValid(Boolean(user));
+          setLinkValid(valid);
           setCheckingLink(false);
         }
-      } catch {
+      })
+      .catch(() => {
         if (mounted) {
           setLinkValid(false);
           setCheckingLink(false);
         }
-      }
-    }, 450);
+      });
 
     return () => {
       mounted = false;
-      if (subscription?.unsubscribe) subscription.unsubscribe();
-      clearTimeout(timer);
     };
-  }, []);
+  }, [token]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -83,9 +65,9 @@ export default function SetPasswordPage() {
     setError("");
     setSubmitting(true);
     try {
-      await authService.updatePassword(password);
+      await authService.updatePassword(token, password, "invitation");
       setDone(true);
-      await authService.logout("global");
+      await authService.logout();
       addToast("Senha cadastrada com sucesso! Faça login para começar.");
       setTimeout(() => navigate("/login", { replace: true }), 1600);
     } catch (err) {
@@ -247,4 +229,3 @@ export default function SetPasswordPage() {
     </div>
   );
 }
-

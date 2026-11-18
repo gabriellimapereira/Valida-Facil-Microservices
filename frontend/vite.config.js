@@ -6,6 +6,16 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "icons-vendor": ["lucide-react"],
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.js",

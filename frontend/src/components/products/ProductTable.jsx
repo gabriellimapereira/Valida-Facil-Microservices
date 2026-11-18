@@ -39,7 +39,7 @@ function SortIndicator({ field, currentField, currentOrder }) {
   );
 }
 
-function EmptyState({ hasActiveFilters, onClearFilters, onNewProduct }) {
+function EmptyState({ hasActiveFilters, onClearFilters, onNewProduct, readOnly = false }) {
   return (
     <div className="px-6 py-16 sm:py-20 text-center">
       <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-100 shadow-xs">
@@ -51,6 +51,8 @@ function EmptyState({ hasActiveFilters, onClearFilters, onNewProduct }) {
       <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
         {hasActiveFilters
           ? "Nenhum item corresponde aos critérios ou filtros atuais de busca."
+          : readOnly
+          ? "Nenhum produto cadastrado no armazém central da empresa."
           : "Seu estoque ainda está vazio. Cadastre o primeiro produto para começar a monitorar validades e saídas."}
       </p>
       <div className="mt-5 flex justify-center gap-3">
@@ -63,7 +65,7 @@ function EmptyState({ hasActiveFilters, onClearFilters, onNewProduct }) {
             Limpar filtros de busca
           </button>
         )}
-        {!hasActiveFilters && onNewProduct && (
+        {!hasActiveFilters && !readOnly && onNewProduct && (
           <button
             type="button"
             onClick={onNewProduct}
@@ -127,6 +129,7 @@ export default function ProductTable({
   onClearFilters,
   onNewProduct,
   hasActiveFilters = false,
+  readOnly = false,
 }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -177,7 +180,7 @@ export default function ProductTable({
                 </span>
               </th>
               <th className="text-left px-5 py-3.5">Status</th>
-              <th className="text-right px-5 py-3.5">Ações</th>
+              <th className="text-right px-5 py-3.5">{readOnly ? "Acesso" : "Ações"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/90">
@@ -213,33 +216,39 @@ export default function ProductTable({
                   <td className="px-5 py-3.5">
                     <StatusChips p={p} />
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => onMovement(p)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:text-amber-700 hover:border hover:border-amber-200 transition cursor-pointer"
-                        title="Registrar movimentação (Entrada/Saída)"
-                        aria-label={`Registrar movimentação de ${p.name}`}
-                      >
-                        <ArrowLeftRight size={15} />
-                      </button>
-                      <button
-                        onClick={() => onEdit(p)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-teal-50 hover:text-teal-700 hover:border hover:border-teal-200 transition cursor-pointer"
-                        title="Editar detalhes do produto"
-                        aria-label={`Editar detalhes de ${p.name}`}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(p)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border hover:border-red-200 transition cursor-pointer"
-                        title="Excluir produto"
-                        aria-label={`Excluir ${p.name}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                  <td className="px-5 py-3.5 text-right">
+                    {readOnly ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        Somente leitura
+                      </span>
+                    ) : (
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => onMovement(p)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:text-amber-700 hover:border hover:border-amber-200 transition cursor-pointer"
+                          title="Registrar movimentação (Entrada/Saída)"
+                          aria-label={`Registrar movimentação de ${p.name}`}
+                        >
+                          <ArrowLeftRight size={15} />
+                        </button>
+                        <button
+                          onClick={() => onEdit(p)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-teal-50 hover:text-teal-700 hover:border hover:border-teal-200 transition cursor-pointer"
+                          title="Editar detalhes do produto"
+                          aria-label={`Editar detalhes de ${p.name}`}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(p)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border hover:border-red-200 transition cursor-pointer"
+                          title="Excluir produto"
+                          aria-label={`Excluir ${p.name}`}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -251,6 +260,7 @@ export default function ProductTable({
                     hasActiveFilters={hasActiveFilters}
                     onClearFilters={onClearFilters}
                     onNewProduct={onNewProduct}
+                    readOnly={readOnly}
                   />
                 </td>
               </tr>
@@ -282,27 +292,35 @@ export default function ProductTable({
               <StatusChips p={p} />
             </div>
 
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-              <button
-                onClick={() => onMovement(p)}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 active:bg-amber-50 active:text-amber-700 transition"
-              >
-                <ArrowLeftRight size={14} /> Mover
-              </button>
-              <button
-                onClick={() => onEdit(p)}
-                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 active:bg-teal-50 active:text-teal-700 transition"
-              >
-                <Pencil size={14} /> Editar
-              </button>
-              <button
-                onClick={() => onDelete(p)}
-                className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 active:bg-red-50 active:text-red-600 transition"
-                title="Excluir"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+            {readOnly ? (
+              <div className="pt-2 border-t border-slate-100 text-center">
+                <span className="text-xs text-slate-500 italic">
+                  Disponível no Armazém Central para solicitação via Requisições
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => onMovement(p)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 active:bg-amber-50 active:text-amber-700 transition"
+                >
+                  <ArrowLeftRight size={14} /> Mover
+                </button>
+                <button
+                  onClick={() => onEdit(p)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 active:bg-teal-50 active:text-teal-700 transition"
+                >
+                  <Pencil size={14} /> Editar
+                </button>
+                <button
+                  onClick={() => onDelete(p)}
+                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 active:bg-red-50 active:text-red-600 transition"
+                  title="Excluir"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {items.length === 0 && (
@@ -310,6 +328,7 @@ export default function ProductTable({
             hasActiveFilters={hasActiveFilters}
             onClearFilters={onClearFilters}
             onNewProduct={onNewProduct}
+            readOnly={readOnly}
           />
         )}
       </div>

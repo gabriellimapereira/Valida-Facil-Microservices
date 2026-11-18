@@ -36,5 +36,40 @@ describe("InviteMemberModal", () => {
       });
     });
   });
+
+  it("permite vincular o operador a uma filial específica quando há lojas", async () => {
+    const onInvite = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <InviteMemberModal
+        onClose={vi.fn()}
+        onInvite={onInvite}
+        stores={[
+          { id: "store-1", name: "Filial Centro", code: "CENTRO-01" },
+          { id: "store-2", name: "Filial Norte", code: "NORTE-02" },
+        ]}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Ex: João Pedro Santos/i), {
+      target: { value: "Jorge Miguel" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/colaborador@suaempresa.com/i), {
+      target: { value: "jorge@empresa.com" },
+    });
+
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: "store-2" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Enviar convite/i }));
+
+    await waitFor(() => {
+      expect(onInvite).toHaveBeenCalledWith({
+        fullName: "Jorge Miguel",
+        email: "jorge@empresa.com",
+        role: "operador",
+        storeId: "store-2",
+      });
+    });
+  });
 });
 

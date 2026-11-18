@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowRight,
   AlertTriangle,
-  ArrowDown,
   CheckCircle2,
   Eye,
   EyeOff,
   FileSpreadsheet,
-  FileText,
-  HelpCircle,
-  History,
   Lock,
   Mail,
   MessageCircle,
@@ -32,110 +29,75 @@ const Logo = ({ dark }) => (
 
 function BrandPanel() {
   return (
-    <div className="hidden lg:block lg:w-1/2 h-screen overflow-y-auto bg-navy relative border-r border-slate-800 scroll-smooth">
-      {/* Dynamic ambient blur glows */}
-      <div className="sticky top-0 h-0 z-0 pointer-events-none">
-        <div className="absolute top-12 right-12 w-96 h-96 rounded-full bg-amber-600/10 blur-3xl" />
-        <div className="absolute top-96 left-12 w-80 h-80 rounded-full bg-teal-500/10 blur-3xl" />
-        <div className="absolute top-[800px] right-8 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl" />
-      </div>
+    <aside className="relative isolate hidden h-screen w-1/2 shrink-0 overflow-hidden border-r border-white/10 bg-[#102238] text-white lg:flex">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[0.12]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "linear-gradient(135deg, black, transparent 78%)",
+        }}
+      />
+      <div aria-hidden="true" className="absolute -right-36 top-1/4 h-[32rem] w-[32rem] rounded-full border border-amber-400/10" />
+      <div aria-hidden="true" className="absolute -right-20 top-[30%] h-[24rem] w-[24rem] rounded-full border border-amber-400/10" />
 
-      <div className="relative z-10 p-10 lg:p-14">
-        {/* Section 1: Hero */}
-        <div className="min-h-[82vh] flex flex-col justify-between pt-2 pb-16">
-          <div><Logo dark /></div>
+      <div className="relative z-10 flex min-h-screen w-full flex-col justify-between p-10 xl:p-14">
+        <Logo dark />
 
-          <div className="max-w-lg my-auto space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-amber-400 text-xs font-medium backdrop-blur-md">
-              <HelpCircle size={14} />
-              Tá precisando de ajuda para gerenciar seu estoque?
+        <div className="my-auto max-w-2xl py-10">
+          <div className="mb-5 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
+            <span className="h-px w-7 bg-amber-400" />
+            Visibilidade para agir antes
+          </div>
+
+          <h1 className="max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight xl:text-5xl">
+            Cada item no prazo.
+            <span className="mt-1 block text-amber-300">Reposição no ponto.</span>
+          </h1>
+
+          <p className="mt-5 max-w-lg text-sm leading-7 text-slate-300 xl:text-base">
+            Acompanhe validades, níveis de estoque e movimentações da sua operação em um painel claro e rastreável.
+          </p>
+
+          <div className="mt-9 grid max-w-xl grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.05] p-4">
+              <ShieldCheck size={19} className="mb-3 text-teal-300" />
+              <p className="text-sm font-bold text-white">Validade monitorada</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Encontre primeiro o que precisa de atenção.</p>
             </div>
-
-            <h1 className="text-white text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
-              Controle inteligente de validade e estoque para sua empresa.
-            </h1>
-
-            <p className="text-slate-300 text-base leading-relaxed">
-              Evite perdas financeiras por produtos vencidos, gerencie categorias e acompanhe movimentações de estoque em um único painel corporativo.
-            </p>
-
-            <div className="pt-2 flex items-center gap-4 text-xs text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck size={16} className="text-teal-400" />
-                <span>Multi-usuários & RBAC</span>
-              </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-              <div className="flex items-center gap-1.5">
-                <FileSpreadsheet size={16} className="text-amber-400" />
-                <span>Relatórios PDF & Excel</span>
-              </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.05] p-4">
+              <FileSpreadsheet size={19} className="mb-3 text-amber-300" />
+              <p className="text-sm font-bold text-white">Movimentação rastreável</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">Consulte alterações e gere relatórios da operação.</p>
             </div>
           </div>
 
-          <div className="text-slate-400 text-xs flex items-center gap-2 pt-6">
-            <span>Role para conhecer mais recursos</span>
-            <ArrowDown size={14} className="animate-bounce text-amber-400" />
-          </div>
-        </div>
-
-        {/* Section 2: Relatórios & Auditoria */}
-        <div className="pt-16 pb-20">
-          <div className="max-w-lg mr-auto space-y-5 text-left bg-white/5 border border-white/10 p-7 rounded-3xl backdrop-blur-md shadow-xl transition transform hover:border-teal-500/30">
-            <h2 className="text-white text-2xl font-bold leading-snug">
-              Controle rigoroso de movimentações.
-            </h2>
-
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Tenha rastreabilidade em todas as operações de estoque. O sistema registra automaticamente qual colaborador realizou cada entrada, saída ou ajuste, mantendo o histórico de auditoria transparente e confiável.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
-                <History className="text-amber-400 mb-2" size={20} />
-                <h4 className="text-xs font-bold text-white">Rastreabilidade Total</h4>
-                <p className="text-[11px] text-slate-400 mt-1 leading-normal">Saiba exatamente quem alterou cada produto e a quantidade.</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
-                <FileSpreadsheet className="text-teal-400 mb-2" size={20} />
-                <h4 className="text-xs font-bold text-white">Exportação Executiva</h4>
-                <p className="text-[11px] text-slate-400 mt-1 leading-normal">Relatórios em PDF e Excel prontos para reuniões e fiscos.</p>
-              </div>
-            </div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-4 text-[11px] font-medium text-slate-400">
+            <span>Armazém central</span>
+            <span className="h-1 w-1 rounded-full bg-amber-400" />
+            <span>Lojas e filiais</span>
+            <span className="h-1 w-1 rounded-full bg-amber-400" />
+            <span>Reposições</span>
           </div>
         </div>
 
-        {/* Section 3: WhatsApp Contact (Com espaçamento equilibrado de 176px) */}
-        <div className="pt-44 pb-16">
-          <div className="max-w-lg ml-auto space-y-5 text-right bg-gradient-to-br from-emerald-950/40 to-slate-900/60 border border-emerald-500/20 p-7 rounded-3xl backdrop-blur-md shadow-xl transition transform hover:border-emerald-500/40">
-            <h2 className="text-white text-2xl font-bold leading-snug">
-              Fale com nossa equipe no WhatsApp.
-            </h2>
-
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Quer ajuda no cadastro da sua empresa, um plano sob medida ou esclarecer dúvidas operacionais? Atendemos você de forma rápida e direta.
-            </p>
-
-            <div className="pt-2 flex justify-end">
-              <a
-                href="https://wa.me/558894672031"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/50 transition transform hover:-translate-y-0.5 active:translate-y-0 select-none cursor-pointer"
-              >
-                <MessageCircle size={18} />
-                <span>Entrar em contato: (88) 94672-031</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="pt-16 border-t border-white/10 text-slate-400 text-xs flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-5 text-xs text-slate-400">
           <span>© {new Date().getFullYear()} Valida Fácil</span>
-          <span>Gestão Empresarial de Estoque</span>
+          <a
+            href="https://wa.me/558894672031"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+          >
+            <MessageCircle size={15} className="text-emerald-300" />
+            Precisa de ajuda?
+            <ArrowRight size={14} />
+          </a>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -148,10 +110,6 @@ function ForgotPasswordForm({ onBack }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setError("Informe o e-mail da sua conta.");
-      return;
-    }
     setError("");
     setSubmitting(true);
     try {
@@ -200,23 +158,28 @@ function ForgotPasswordForm({ onBack }) {
         Digite o e-mail cadastrado e enviaremos as instruções para você redefinir sua chave de acesso.
       </p>
 
-      <form onSubmit={submit} className="space-y-6">
+      <form onSubmit={submit} className="space-y-5">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-2.5">E-mail cadastrado</label>
+          <label htmlFor="recovery-email" className="block text-xs font-semibold text-slate-700 mb-2">
+            E-mail cadastrado
+          </label>
           <div className="relative">
             <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="recovery-email"
               type="email"
+              autoComplete="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seuemail@empresa.com"
-              className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
+              className="w-full min-h-11 pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition"
             />
           </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+          <div role="alert" className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
             <AlertTriangle size={15} className="shrink-0" />
             {error}
           </div>
@@ -315,20 +278,25 @@ function LoginForm({ onForgotPassword }) {
   return (
     <>
       <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1">Acesse sua conta</h2>
-      <p className="text-slate-500 text-sm mb-7">Acesse o painel da sua empresa para gerenciar o estoque.</p>
+      <p className="text-slate-500 text-sm mb-5">Entre para acompanhar o estoque da sua empresa.</p>
 
-      <form onSubmit={submit} className="space-y-6">
+      <form onSubmit={submit} className="space-y-5">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-2.5">E-mail corporativo</label>
+          <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-2">
+            E-mail corporativo
+          </label>
           <div className="relative">
             <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="login-email"
               type="email"
+              autoComplete="username"
+              required
               value={email}
               disabled={isLocked}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seuemail@empresa.com"
-              className={`w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition ${
+              className={`w-full min-h-11 pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition ${
                 isLocked ? "bg-slate-50 opacity-60 cursor-not-allowed" : ""
               }`}
             />
@@ -337,11 +305,13 @@ function LoginForm({ onForgotPassword }) {
 
         <div>
           <div className="flex items-center justify-between mb-2.5">
-            <label className="block text-xs font-semibold text-slate-700">Chave de acesso / Senha</label>
+            <label htmlFor="login-password" className="block text-xs font-semibold text-slate-700">
+              Senha
+            </label>
             <button
               type="button"
               onClick={onForgotPassword}
-              className="text-xs font-semibold text-red-600 hover:text-red-700 transition cursor-pointer"
+              className="text-xs font-semibold text-amber-700 hover:text-amber-800 transition cursor-pointer"
             >
               Esqueci minha senha
             </button>
@@ -349,18 +319,23 @@ function LoginForm({ onForgotPassword }) {
           <div className="relative">
             <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              id="login-password"
               type={showPw ? "text" : "password"}
+              autoComplete="current-password"
+              required
               value={password}
               disabled={isLocked}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className={`w-full pl-11 pr-11 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition ${
+              className={`w-full min-h-11 pl-11 pr-11 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition ${
                 isLocked ? "bg-slate-50 opacity-60 cursor-not-allowed" : ""
               }`}
             />
             <button
               type="button"
               onClick={() => setShowPw((s) => !s)}
+              aria-label={showPw ? "Ocultar senha" : "Mostrar senha"}
+              aria-pressed={showPw}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded transition cursor-pointer"
             >
               {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -372,7 +347,7 @@ function LoginForm({ onForgotPassword }) {
         </div>
 
         {isLocked && (
-          <div className="flex items-center gap-2.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3.5 animate-pulse">
+          <div role="alert" className="flex items-center gap-2.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3.5">
             <ShieldAlert size={18} className="shrink-0 text-red-600" />
             <div className="text-xs">
               <p className="font-semibold">Proteção contra tentativas excessivas ativada</p>
@@ -382,30 +357,25 @@ function LoginForm({ onForgotPassword }) {
         )}
 
         {error && !isLocked && (
-          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+          <div role="alert" className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
             <AlertTriangle size={15} className="shrink-0" />
             {error}
           </div>
         )}
-
-        <label className="flex items-center gap-2 text-xs font-medium text-slate-600 select-none cursor-pointer">
-          <input type="checkbox" defaultChecked className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer" />
-          Manter-me conectado nesta máquina
-        </label>
 
         <TactileButton
           type="submit"
           variant="amber"
           disabled={loading || isLocked}
           className="w-full"
-          padding="13px 20px"
+          padding="12px 20px"
           rounded={12}
         >
           {loading ? "Entrando..." : isLocked ? `Aguarde (${lockoutSeconds}s)` : "Entrar"}
         </TactileButton>
       </form>
 
-      <p className="text-center text-xs text-slate-400 mt-6">
+      <p className="text-center text-xs text-slate-400 mt-5">
         Valida Fácil • Gestão Empresarial de Estoque
       </p>
     </>
@@ -421,29 +391,22 @@ export default function LoginPage() {
       <BrandPanel />
 
       {/* Main form container (Scrollable on mobile/tablet, centered on desktop) */}
-      <div className="flex-1 min-h-screen lg:h-screen lg:overflow-y-auto flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 bg-slate-100">
-        <div className="w-full max-w-md my-auto py-6 sm:py-8">
+      <div className="flex-1 min-h-screen lg:h-screen lg:overflow-y-auto flex flex-col items-center justify-center px-4 py-5 sm:p-8 lg:p-12 bg-slate-100">
+        <div className="w-full max-w-md my-auto py-1 sm:py-3">
           
           {/* Mobile & Tablet Header (Intro text before login card) */}
-          <div className="lg:hidden text-center mb-8 px-2 space-y-3">
+          <div className="lg:hidden text-center mb-5 sm:mb-7 px-2">
             <Logo />
-            
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-semibold mx-auto">
-              <HelpCircle size={14} className="shrink-0 text-amber-600" />
-              <span>Tá precisando de ajuda para gerenciar seu estoque?</span>
-            </div>
-
-            <h1 className="text-slate-900 text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-              Controle inteligente de validade e estoque
+            <h1 className="text-slate-900 text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
+              Estoque seguro. Validade sob controle.
             </h1>
-
-            <p className="text-slate-600 text-xs sm:text-sm max-w-sm mx-auto leading-relaxed">
-              Evite perdas por vencimentos e acompanhe movimentações corporativas em tempo real.
+            <p className="text-slate-600 text-xs sm:text-sm mt-2 max-w-sm mx-auto leading-relaxed">
+              Acompanhe produtos, vencimentos e reposições em um só lugar.
             </p>
           </div>
 
           {/* White Login / Reset Card */}
-          <div className="w-full bg-white p-6 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50">
+          <div className="w-full bg-white p-5 sm:p-7 lg:p-9 rounded-2xl border border-slate-200 shadow-lg shadow-slate-300/30">
             <div className="hidden lg:block">
               <Logo />
             </div>
@@ -455,35 +418,16 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Mobile & Tablet Feature Showcase Cards (Visible below login card on mobile) */}
-          <div className="lg:hidden mt-8 space-y-4 px-1">
-            <div className="bg-white/80 border border-slate-200/80 p-5 rounded-2xl shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 mb-1">Controle rigoroso de movimentações</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                Rastreabilidade de colaboradores em entradas, saídas e ajustes, além de relatórios executivos em PDF e Excel.
-              </p>
-              <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium">
-                <span className="flex items-center gap-1"><History size={13} className="text-amber-600" /> Histórico auditável</span>
-                <span>•</span>
-                <span className="flex items-center gap-1"><FileSpreadsheet size={13} className="text-teal-600" /> Exportação 1-clique</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-900/90 text-white p-5 rounded-2xl shadow-md border border-emerald-800">
-              <h3 className="text-sm font-bold text-white mb-1">Fale com nossa equipe no WhatsApp</h3>
-              <p className="text-xs text-emerald-100/90 leading-relaxed mb-3">
-                Dúvidas ou precisa de um plano sob medida para seu negócio? Atendimento direto e rápido.
-              </p>
-              <a
-                href="https://wa.me/558894672031"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition active:scale-95 cursor-pointer"
-              >
-                <MessageCircle size={15} />
-                <span>WhatsApp: (88) 94672-031</span>
-              </a>
-            </div>
+          <div className="lg:hidden mt-4 flex justify-center">
+            <a
+              href="https://wa.me/558894672031"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-slate-600 hover:bg-white hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+            >
+              <MessageCircle size={15} className="text-emerald-700" />
+              Precisa de ajuda? Fale com a equipe
+            </a>
           </div>
 
         </div>

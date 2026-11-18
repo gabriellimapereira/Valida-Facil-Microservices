@@ -96,5 +96,25 @@ describe("ProductTable", () => {
 
     expect(screen.getAllByText(/Nenhum produto encontrado/i)[0]).toBeInTheDocument();
   });
+
+  it("renderiza modo somente leitura sem botões de edição ou movimentação", () => {
+    render(
+      <ProductTable
+        items={mockProducts}
+        page={1}
+        totalPages={1}
+        totalCount={2}
+        pageSize={10}
+        setPage={vi.fn()}
+        readOnly={true}
+      />
+    );
+
+    expect(screen.getByText("Acesso")).toBeInTheDocument();
+    expect(screen.getAllByText("Somente leitura")[0]).toBeInTheDocument();
+    expect(screen.queryByTitle(/Registrar movimentação/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Editar detalhes do produto/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Excluir produto/i)).not.toBeInTheDocument();
+  });
 });
 

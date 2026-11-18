@@ -15,18 +15,18 @@ const useIsoLayoutEffect =
  */
 const PRESETS = {
   amber: {
-    fill: "#D97706",
-    hoverFill: "#B45309",
-    baseColor: "#92400E",
+    fill: "#B45309",
+    hoverFill: "#92400E",
+    baseColor: "#78350F",
     textColor: "#FFFFFF",
     hoverTextColor: "#FFFFFF",
     offsetX: 0,
     offsetY: 4,
   },
   primary: {
-    fill: "#D97706",
-    hoverFill: "#B45309",
-    baseColor: "#92400E",
+    fill: "#B45309",
+    hoverFill: "#92400E",
+    baseColor: "#78350F",
     textColor: "#FFFFFF",
     hoverTextColor: "#FFFFFF",
     offsetX: 0,

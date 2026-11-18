@@ -1,115 +1,91 @@
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { apiClient, getAccessToken } from "../lib/apiClient";
 
-// Supabase devolve mensagens de erro em inglês por padrão — traduzimos as
-// mais comuns pra não deixar o usuário sem entender o que aconteceu.
-function translateAuthError(error) {
-  const raw = (error?.message || "").toLowerCase();
-  if (raw.includes("invalid login credentials")) {
-    return "E-mail ou senha incorretos.";
+const SESSION_EVENT = "valida-facil-session-change";
+
+function notifySessionChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SESSION_EVENT));
   }
-  if (raw.includes("email not confirmed")) {
-    return "Este e-mail ainda não foi confirmado. Verifique sua caixa de entrada.";
-  }
-  if (raw.includes("user not found")) {
-    return "Não encontramos uma conta com esse e-mail.";
-  }
-  if (raw.includes("rate limit") || raw.includes("over_email_send_rate_limit")) {
-    return "Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.";
-  }
-  if (raw.includes("same_password") || raw.includes("different from the old") || raw.includes("different from old")) {
-    return "A nova senha deve ser diferente da senha anterior.";
-  }
-  if (raw.includes("auth session missing") || raw.includes("session")) {
-    return "Sessão expirada ou link inválido. Solicite um novo link de acesso.";
-  }
-  if (raw.includes("password should be at least")) {
-    return "A senha não atende aos requisitos mínimos de segurança.";
-  }
-  return error?.message || "Não foi possível entrar. Verifique suas credenciais.";
 }
 
-// Login por e-mail/senha. Com o Supabase configurado, usa Supabase Auth de
-// verdade; caso contrário, simula uma autenticação bem-sucedida para permitir
-// o teste visual completo do front-end sem back-end.
 export async function login(email, password) {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(translateAuthError(error));
-    return data.user;
+  const payload = await apiClient.postPublic("/auth/login", { email, password });
+  if (!payload?.access_token || !payload.user) {
+    throw new Error("O servidor retornou uma sessão inválida.");
   }
-  if (!email || !password) {
-    throw new Error("Informe usuário/e-mail e senha para continuar.");
-  }
-  await new Promise((r) => setTimeout(r, 450));
-  return { id: "demo-user", email };
+  localStorage.setItem("valida_facil_token", payload.access_token);
+  localStorage.setItem("valida_facil_user", JSON.stringify(payload.user));
+  notifySessionChange();
+  return payload.user;
 }
 
-// scope "local" (padrão) desloga só esta aba/sessão. scope "global" revoga
-// a sessão em TODOS os dispositivos/abas logados com essa conta — é o que
-// usamos depois de trocar a senha, pra nenhuma aba antiga continuar
-// "logada" com a senha velha.
-export async function logout(scope = "local") {
-  if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.signOut({ scope });
-    if (error) throw error;
+export async function logout() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("valida_facil_token");
+    localStorage.removeItem("valida_facil_user");
+    notifySessionChange();
   }
   return true;
 }
 
 export async function requestPasswordReset(email) {
-  if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
-    });
-    if (error) throw error;
-    return true;
-  }
-  await new Promise((r) => setTimeout(r, 300));
+  await apiClient.postPublic("/auth/password-reset", { email });
   return true;
 }
 
-// Chamada pela tela que o link do e-mail abre (/redefinir-senha). Nesse
-// ponto o usuário já tem uma sessão de recuperação válida (o supabase-js
-// processa o token da URL sozinho ao carregar a página), então só falta
-// definir a senha nova de fato.
-export async function updatePassword(newPassword) {
-  if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw new Error(translateAuthError(error));
-    return true;
-  }
-  await new Promise((r) => setTimeout(r, 300));
+export async function validateActionToken(token, purpose) {
+  const path = purpose === "invitation"
+    ? "/auth/invitation/validate"
+    : "/auth/password-reset/validate";
+  const result = await apiClient.getPublic(path, { token });
+  return Boolean(result?.valid);
+}
+
+export async function updatePassword(token, newPassword, purpose = "password_reset") {
+  const path = purpose === "invitation"
+    ? "/auth/invitation/accept"
+    : "/auth/password-reset/confirm";
+  await apiClient.postPublic(path, { token, password: newPassword });
   return true;
 }
 
-// Confirma que a senha atual digitada está correta ANTES de disparar o
-// e-mail de troca de senha — tenta logar de novo com as mesmas
-// credenciais; se rejeitar, a senha atual está errada.
-export async function verifyCurrentPassword(email, password) {
-  if (!isSupabaseConfigured) return true; // modo demonstração, sem como verificar de verdade
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  return !error;
-}
-
-// Restaura a sessão salva pelo supabase-js (localStorage) ao recarregar a
-// página. Em modo demonstração não há sessão real para restaurar — o app
-// sempre começa deslogado nesse caso.
-export async function getSessionUser() {
-  if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return data?.session?.user ?? null;
-}
-
-// Mantém o app em sincronia com o Supabase Auth (login em outra aba, token
-// renovado, logout por expiração etc). Retorna um "unsubscribe" — chame
-// dentro do cleanup de um useEffect.
-export function onAuthStateChange(callback) {
-  if (!isSupabaseConfigured) {
-    return { unsubscribe() {} };
-  }
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+export async function changePassword(currentPassword, newPassword) {
+  await apiClient.post("/auth/password/change", {
+    current_password: currentPassword,
+    new_password: newPassword,
   });
-  return data.subscription;
+  return true;
+}
+
+export async function verifyCurrentPassword(email, password) {
+  const user = await apiClient.postPublic("/auth/login", { email, password });
+  return Boolean(user?.access_token);
+}
+
+export async function getSessionUser() {
+  if (typeof window === "undefined") return null;
+  const token = getAccessToken();
+  const rawUser = localStorage.getItem("valida_facil_user");
+  if (!token || !rawUser) return null;
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    await logout();
+    return null;
+  }
+}
+
+export function onAuthStateChange(callback) {
+  if (typeof window === "undefined") return { unsubscribe() {} };
+  const listener = () => {
+    getSessionUser().then(callback).catch(() => callback(null));
+  };
+  window.addEventListener(SESSION_EVENT, listener);
+  window.addEventListener("storage", listener);
+  return {
+    unsubscribe() {
+      window.removeEventListener(SESSION_EVENT, listener);
+      window.removeEventListener("storage", listener);
+    },
+  };
 }

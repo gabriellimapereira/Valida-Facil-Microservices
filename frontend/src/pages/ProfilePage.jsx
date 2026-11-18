@@ -12,6 +12,7 @@ import {
   Send,
   Shield,
   ShieldCheck,
+  Store,
   Trash2,
   User,
   UserCheck,
@@ -24,6 +25,7 @@ import { useToast } from "../context/ToastContext";
 import * as authService from "../services/authService";
 import * as alertService from "../services/alertService";
 import * as companyService from "../services/companyService";
+import * as storeService from "../services/storeService";
 import { formatPhone, fmtDate } from "../utils/formatters";
 import CharCounter from "../components/ui/CharCounter";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
@@ -51,7 +53,9 @@ export default function ProfilePage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [members, setMembers] = useState([]);
+  const [stores, setStores] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [updatingMemberId, setUpdatingMemberId] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [removingMember, setRemovingMember] = useState(false);
@@ -62,8 +66,18 @@ export default function ProfilePage() {
     if (company) {
       setForm({ ...company });
       loadMembers(company.id);
+      loadStores();
     }
   }, [company]);
+
+  const loadStores = async () => {
+    try {
+      const list = await storeService.fetchStores();
+      setStores(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Falha ao carregar unidades:", err);
+    }
+  };
 
   const loadMembers = async (companyId) => {
     if (!companyId) return;
@@ -149,7 +163,7 @@ export default function ProfilePage() {
     if (!isAdmin) return;
     setUploadingLogo(true);
     try {
-      const updated = await companyService.removeCompanyLogo(company.id);
+      const updated = await companyService.removeCompanyLogo();
       await saveCompany(updated);
       setForm((f) => ({ ...f, logoUrl: null }));
       addToast("Logotipo removido. As iniciais da empresa serão exibidas.");
@@ -204,12 +218,7 @@ export default function ProfilePage() {
     setPwErr("");
     setPwSubmitting(true);
     try {
-      const isCurrentPasswordValid = await authService.verifyCurrentPassword(user.email, pw.current);
-      if (!isCurrentPasswordValid) {
-        setPwErr("Senha atual incorreta.");
-        return;
-      }
-      await authService.updatePassword(pw.newPassword);
+      await authService.changePassword(pw.current, pw.newPassword);
       setPw({ current: "", newPassword: "", confirm: "" });
       addToast("Sua senha foi alterada com sucesso!");
     } catch (err) {
@@ -240,6 +249,34 @@ export default function ProfilePage() {
     } catch (err) {
       addToast(err.message || "Falha ao enviar convite.", "error");
       throw err;
+    }
+  };
+
+  const handleChangeMemberStore = async (member, nextStoreId) => {
+    if (!isAdmin || member.role === "admin") return;
+    const normalizedStoreId = nextStoreId || null;
+    if ((member.storeId || null) === normalizedStoreId) return;
+
+    setUpdatingMemberId(member.id);
+    try {
+      const updated = await companyService.updateMember(member.id, {
+        storeId: normalizedStoreId,
+      });
+      const resolvedStoreName = normalizedStoreId
+        ? stores.find((s) => s.id === normalizedStoreId)?.name || updated?.storeName || null
+        : null;
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === member.id
+            ? { ...m, storeId: normalizedStoreId, storeName: resolvedStoreName }
+            : m
+        )
+      );
+      addToast("Unidade de atuação atualizada com sucesso!");
+    } catch (err) {
+      addToast(err.message || "Falha ao atualizar unidade do colaborador.", "error");
+    } finally {
+      setUpdatingMemberId(null);
     }
   };
 
@@ -470,13 +507,13 @@ export default function ProfilePage() {
               const isMemAdmin = m.role === "admin";
 
               return (
-                <div key={m.id} className="py-3.5 flex items-center justify-between gap-4">
+                <div key={m.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-800 text-slate-200 font-bold text-xs flex items-center justify-center border border-slate-700">
+                    <div className="w-9 h-9 rounded-full bg-slate-800 text-slate-200 font-bold text-xs flex items-center justify-center border border-slate-700 shrink-0">
                       {initials}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-white">{name}</span>
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -488,13 +525,37 @@ export default function ProfilePage() {
                           {isMemAdmin ? <Shield size={10} className="text-amber-400" /> : <UserCheck size={10} className="text-teal-400" />}
                           {isMemAdmin ? "Administrador" : "Operador"}
                         </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800/90 text-slate-300 border border-slate-700/80">
+                          <Store size={10} className="text-amber-400" />
+                          {isMemAdmin
+                            ? "Todas as unidades"
+                            : m.storeId
+                            ? m.storeName || stores.find((s) => s.id === m.storeId)?.name || "Filial vinculada"
+                            : "Armazém Central"}
+                        </span>
                       </div>
                       <span className="text-xs text-slate-400">{m.email}</span>
                     </div>
                   </div>
 
                   {isAdmin && m.id !== user?.id && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {!isMemAdmin && (
+                        <select
+                          aria-label={`Unidade de atuação de ${name}`}
+                          value={m.storeId || ""}
+                          disabled={updatingMemberId === m.id}
+                          onChange={(e) => handleChangeMemberStore(m, e.target.value)}
+                          className="bg-[#0B1322] text-slate-200 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 disabled:opacity-50"
+                        >
+                          <option value="">Armazém Central</option>
+                          {stores.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} {s.code ? `(${s.code})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <button
                         type="button"
                         onClick={() => setMemberToRemove(m)}
@@ -626,6 +687,7 @@ export default function ProfilePage() {
         <InviteMemberModal
           onClose={() => setShowInviteModal(false)}
           onInvite={handleInviteMember}
+          stores={stores}
         />
       )}
 

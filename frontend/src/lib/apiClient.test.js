@@ -1,164 +1,65 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// apiClient.js decide seu comportamento com base em duas coisas que vêm
-// de "./supabaseClient": se o Supabase está configurado, e a sessão atual
-// (via supabase.auth.getSession()). Usamos vi.doMock + import dinâmico
-// (em vez de vi.mock estático) porque cada teste precisa de uma
-// combinação diferente dessas duas variáveis.
 describe("apiClient", () => {
-  const originalFetch = global.fetch;
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    vi.resetModules();
+    localStorage.clear();
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
-  async function loadApiClient({ configured, token = null, sessionError = null } = {}) {
-    vi.doMock("./supabaseClient", () => ({
-      isSupabaseConfigured: configured,
-      supabase: {
-        auth: {
-          getSession: vi.fn().mockResolvedValue(
-            sessionError
-              ? { data: null, error: sessionError }
-              : { data: { session: token ? { access_token: token } : null }, error: null }
-          ),
-        },
-      },
-    }));
-    const mod = await import("./apiClient");
-    return mod.apiClient;
-  }
-
-  it("recusa a chamada quando o Supabase não está configurado", async () => {
-    const apiClient = await loadApiClient({ configured: false });
-
-    await expect(apiClient.get("/health")).rejects.toThrow(/backend \+ Supabase configurados/i);
+  it("requires a native session for protected calls", async () => {
+    const { apiClient } = await import("./apiClient");
+    await expect(apiClient.get("/companies/me")).rejects.toThrow(/sessão expirada/i);
   });
 
-  it("recusa a chamada quando não há sessão ativa (token nulo)", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: null });
-
-    await expect(apiClient.get("/health")).rejects.toThrow(/sessão expirada/i);
-  });
-
-  it("propaga o erro quando o Supabase falha ao restaurar a sessão", async () => {
-    const apiClient = await loadApiClient({ configured: true, sessionError: new Error("sessão corrompida") });
-
-    await expect(apiClient.get("/health")).rejects.toThrow("sessão corrompida");
-  });
-
-  it("envia o token no header e o corpo em JSON numa chamada bem-sucedida", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
+  it("sends the stored native JWT and JSON body", async () => {
+    localStorage.setItem("valida_facil_token", "token-123");
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: () => "application/json" },
       json: async () => ({ ok: true }),
     });
+    const { apiClient } = await import("./apiClient");
 
-    const result = await apiClient.post("/movements", { product_id: "p1", quantity_delta: -5 });
-
-    expect(result).toEqual({ ok: true });
-    const [url, options] = global.fetch.mock.calls[0];
+    await expect(apiClient.post("/movements", { quantity_delta: -5 })).resolves.toEqual({ ok: true });
+    const [url, options] = globalThis.fetch.mock.calls[0];
     expect(url).toContain("/movements");
-    expect(options.method).toBe("POST");
     expect(options.headers.Authorization).toBe("Bearer token-123");
-    expect(JSON.parse(options.body)).toEqual({ product_id: "p1", quantity_delta: -5 });
+    expect(JSON.parse(options.body)).toEqual({ quantity_delta: -5 });
   });
 
-  it("monta a query string e ignora valores vazios/indefinidos", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
+  it("allows unauthenticated auth endpoints without adding an authorization header", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: { get: () => "application/json" },
-      json: async () => [],
+      json: async () => ({ valid: true }),
     });
+    const { apiClient } = await import("./apiClient");
 
-    await apiClient.get("/movements/low-stock", { window_days: 15, vazio: "", indefinido: undefined });
-
-    const [url] = global.fetch.mock.calls[0];
-    expect(url).toContain("window_days=15");
-    expect(url).not.toContain("vazio=");
-    expect(url).not.toContain("indefinido=");
+    await expect(apiClient.getPublic("/auth/password-reset/validate", { token: "reset-token" }))
+      .resolves.toEqual({ valid: true });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toContain("token=reset-token");
+    expect(options.headers.Authorization).toBeUndefined();
   });
 
-  it("lança o texto de 'detail' devolvido pelo backend quando a resposta não é ok", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
+  it("surfaces API errors and network errors", async () => {
+    localStorage.setItem("valida_facil_token", "token-123");
+    const { apiClient } = await import("./apiClient");
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
       headers: { get: () => "application/json" },
-      json: async () => ({ detail: "Quantidade insuficiente em estoque." }),
+      json: async () => ({ detail: "Invalid request." }),
     });
+    await expect(apiClient.get("/companies/me")).rejects.toThrow("Invalid request.");
 
-    await expect(apiClient.post("/movements", {})).rejects.toThrow("Quantidade insuficiente em estoque.");
-  });
-
-  it("usa mensagem genérica quando o erro não vem com 'detail' em texto", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      headers: { get: () => "application/json" },
-      json: async () => ({}),
-    });
-
-    await expect(apiClient.get("/health")).rejects.toThrow("Erro 500 no servidor.");
-  });
-
-  it("lança mensagem amigável quando o fetch falha por rede", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
-
-    await expect(apiClient.get("/health")).rejects.toThrow(/não foi possível conectar ao servidor/i);
-  });
-
-  it("não quebra quando a resposta não é JSON", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => "text/plain" },
-      json: async () => {
-        throw new Error("não deveria chamar json() aqui");
-      },
-    });
-
-    await expect(apiClient.get("/health")).resolves.toBeNull();
-  });
-
-  it("executa requisições DELETE e trata status 204 No Content com retorno nulo", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 204,
-      headers: { get: () => null },
-    });
-
-    const result = await apiClient.delete("/companies/members/member-1");
-    expect(result).toBeNull();
-    const [url, options] = global.fetch.mock.calls[0];
-    expect(url).toContain("/companies/members/member-1");
-    expect(options.method).toBe("DELETE");
-  });
-
-  it("executa requisições PATCH com body", async () => {
-    const apiClient = await loadApiClient({ configured: true, token: "token-123" });
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: { get: () => "application/json" },
-      json: async () => ({ id: "member-1", role: "operador" }),
-    });
-
-    const result = await apiClient.patch("/companies/members/member-1", { role: "operador" });
-    expect(result).toEqual({ id: "member-1", role: "operador" });
-    const [url, options] = global.fetch.mock.calls[0];
-    expect(url).toContain("/companies/members/member-1");
-    expect(options.method).toBe("PATCH");
-    expect(JSON.parse(options.body)).toEqual({ role: "operador" });
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(apiClient.get("/companies/me")).rejects.toThrow(/não foi possível conectar/i);
   });
 });

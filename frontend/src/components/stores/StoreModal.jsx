@@ -3,11 +3,12 @@ import { createPortal } from "react-dom";
 import { Building2, X } from "lucide-react";
 import TactileButton from "../ui/TactileButton";
 
-export default function StoreModal({ onClose, onSave }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
+export default function StoreModal({ store = null, onClose, onSave }) {
+  const isEdit = Boolean(store);
+  const [name, setName] = useState(store?.name || "");
+  const [code, setCode] = useState(store?.code || "");
+  const [address, setAddress] = useState(store?.address || "");
+  const [phone, setPhone] = useState(store?.phone || "");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,7 +37,9 @@ export default function StoreModal({ onClose, onSave }) {
       });
       onClose();
     } catch (err) {
-      setError(err.message || "Não foi possível cadastrar a filial.");
+      setError(
+        err.message || (isEdit ? "Não foi possível atualizar a filial." : "Não foi possível cadastrar a filial.")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -58,8 +61,12 @@ export default function StoreModal({ onClose, onSave }) {
               <Building2 size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-lg tracking-tight leading-tight">Nova Filial</h3>
-              <p className="text-xs text-slate-500 mt-1">Cadastre uma nova loja para controle de estoque local</p>
+              <h3 className="font-bold text-slate-900 text-lg tracking-tight leading-tight">
+                {isEdit ? "Editar Filial" : "Nova Filial"}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {isEdit ? "Atualize os dados da unidade física" : "Cadastre uma nova loja para controle de estoque local"}
+              </p>
             </div>
           </div>
           <button
@@ -134,7 +141,13 @@ export default function StoreModal({ onClose, onSave }) {
               Cancelar
             </button>
             <TactileButton type="submit" disabled={submitting}>
-              {submitting ? "Cadastrando..." : "Cadastrar Filial"}
+              {submitting
+                ? isEdit
+                  ? "Salvando..."
+                  : "Cadastrando..."
+                : isEdit
+                ? "Salvar Alterações"
+                : "Cadastrar Filial"}
             </TactileButton>
           </div>
         </form>

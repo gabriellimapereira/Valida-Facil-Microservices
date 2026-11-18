@@ -1,4 +1,4 @@
-// Dados de demonstração usados enquanto o Supabase não está configurado
+// Dados de demonstração usados enquanto não há uma sessão autenticada
 // (ver src/services/productService.js e src/services/companyService.js).
 
 function addDays(days) {
@@ -45,9 +45,9 @@ export const MOCK_COMPANY = {
 };
 
 export const MOCK_MEMBERS = [
-  { id: "user-demo-1", fullName: "Carlos Silva (Proprietário)", email: "carlos.admin@emporioboasafra.com.br", role: "admin", createdAt: "2026-01-15T10:00:00Z" },
-  { id: "user-demo-2", fullName: "Mariana Souza", email: "mariana.operacoes@emporioboasafra.com.br", role: "operador", createdAt: "2026-02-01T14:30:00Z" },
-  { id: "user-demo-3", fullName: "João Pedro Santos", email: "joao.estoque@emporioboasafra.com.br", role: "operador", createdAt: "2026-02-10T09:15:00Z" },
+  { id: "user-demo-1", fullName: "Carlos Silva (Proprietário)", email: "carlos.admin@emporioboasafra.com.br", role: "admin", storeId: null, storeName: null, createdAt: "2026-01-15T10:00:00Z" },
+  { id: "user-demo-2", fullName: "Mariana Souza", email: "mariana.operacoes@emporioboasafra.com.br", role: "operador", storeId: "store-demo-1", storeName: "Filial Centro", createdAt: "2026-02-01T14:30:00Z" },
+  { id: "user-demo-3", fullName: "João Pedro Santos", email: "joao.estoque@emporioboasafra.com.br", role: "operador", storeId: "store-demo-2", storeName: "Filial Shopping Picos", createdAt: "2026-02-10T09:15:00Z" },
 ];
 
 export const MOCK_STORES = [
@@ -88,5 +88,4 @@ export const MOCK_REQUISITIONS = [
     ],
   },
 ];
-
 

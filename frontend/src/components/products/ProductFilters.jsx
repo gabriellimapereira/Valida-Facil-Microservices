@@ -51,6 +51,7 @@ export default function ProductFilters({
             <button
               type="button"
               onClick={() => set("search", "")}
+              aria-label="Limpar busca"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-md transition"
               title="Limpar busca"
             >

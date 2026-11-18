@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 import BrandLogo from "../components/ui/BrandLogo";
 import { useToast } from "../context/ToastContext";
@@ -7,14 +7,10 @@ import * as authService from "../services/authService";
 import PasswordRequirementHint, { MIN_PASSWORD_LENGTH } from "../components/ui/PasswordRequirementHint";
 import TactileButton from "../components/ui/TactileButton";
 
-// Tela que o link do e-mail de "trocar senha" abre. O supabase-js processa
-// sozinho o token que vem na URL (hash) assim que a página carrega e
-// estabelece uma sessão de recuperação temporária — por isso não
-// recebemos nada explícito por props/params aqui, só checamos se essa
-// sessão existe.
 export default function ResetPasswordPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [checkingLink, setCheckingLink] = useState(true);
   const [linkValid, setLinkValid] = useState(false);
@@ -24,50 +20,28 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const token = searchParams.get("token") || "";
 
   useEffect(() => {
     let mounted = true;
-
-    // Checa a sessão imediatamente caso o token já tenha sido processado
-    authService.getSessionUser().then((user) => {
-      if (mounted && user) {
-        setLinkValid(true);
-        setCheckingLink(false);
-      }
-    }).catch(() => {});
-
-    // Escuta eventos de autenticação caso o token da URL ainda esteja sendo validado
-    const subscription = authService.onAuthStateChange
-      ? authService.onAuthStateChange((user) => {
-          if (mounted && user) {
-            setLinkValid(true);
-            setCheckingLink(false);
-          }
-        })
-      : null;
-
-    // Fallback de timeout para o caso de link inválido/ausente
-    const timer = setTimeout(async () => {
-      try {
-        const user = await authService.getSessionUser();
+    authService.validateActionToken(token, "password_reset")
+      .then((valid) => {
         if (mounted) {
-          setLinkValid(Boolean(user));
+          setLinkValid(valid);
           setCheckingLink(false);
         }
-      } catch {
+      })
+      .catch(() => {
         if (mounted) {
           setLinkValid(false);
           setCheckingLink(false);
         }
-      }
-    }, 450);
+      });
 
     return () => {
       mounted = false;
-      if (subscription?.unsubscribe) subscription.unsubscribe();
-      clearTimeout(timer);
     };
-  }, []);
+  }, [token]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -86,14 +60,14 @@ export default function ResetPasswordPage() {
     setError("");
     setSubmitting(true);
     try {
-      await authService.updatePassword(password);
+      await authService.updatePassword(token, password, "password_reset");
       setDone(true);
       // Desloga de propósito: força um login explícito com a senha nova,
       // em vez de deixar a sessão de recuperação "virar" uma sessão normal
       // silenciosamente.
       // "global": revoga a sessão em qualquer outra aba/dispositivo que
       // ainda esteja logado com a senha antiga — não só esta aba aqui.
-      await authService.logout("global");
+      await authService.logout();
       addToast("Senha alterada com sucesso! Faça login com a nova senha.");
       setTimeout(() => navigate("/login", { replace: true }), 1500);
     } catch (err) {

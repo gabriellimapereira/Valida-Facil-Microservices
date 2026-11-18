@@ -128,30 +128,33 @@ export default function DashboardPage() {
                 const urgency = expiryUrgency(p.expiry);
                 const days = daysUntil(p.expiry);
                 return (
-                  <li
-                    key={p.id}
-                    onClick={() => navigate("/estoque")}
-                    className="flex items-center gap-4 px-6 py-5 hover:bg-slate-50/80 transition cursor-pointer group"
-                  >
-                    <span className={`w-3 h-3 rounded-full shrink-0 ${urgency.dot}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <p className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition truncate leading-normal">
-                          {p.name}
-                        </p>
-                        <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
-                          {p.code}
-                        </span>
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/estoque?search=${encodeURIComponent(p.name)}`)}
+                      aria-label={`Localizar ${p.name} no estoque`}
+                      className="w-full flex items-center gap-4 px-4 sm:px-6 py-4 sm:py-5 text-left hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-amber-600 transition cursor-pointer group"
+                    >
+                      <span className={`w-3 h-3 rounded-full shrink-0 ${urgency.dot}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-amber-700 transition truncate leading-normal">
+                            {p.name}
+                          </p>
+                          <span className="hidden sm:inline text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
+                            {p.code}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5 mt-1.5 text-xs">
+                          <span className="text-slate-500 font-medium">{p.quantity} unidades</span>
+                          <span className="text-slate-300">•</span>
+                          <span className={`font-semibold ${days <= 3 ? "text-red-600" : days <= 7 ? "text-amber-600" : "text-slate-500"}`}>
+                            {days < 0 ? `Vencido há ${Math.abs(days)}d` : days === 0 ? "Vence hoje!" : `Vence em ${days} dia(s)`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2.5 mt-1.5 text-xs">
-                        <span className="text-slate-500 font-medium">{p.quantity} unidades</span>
-                        <span className="text-slate-300">•</span>
-                        <span className={`font-semibold ${days <= 3 ? "text-red-600" : days <= 7 ? "text-amber-600" : "text-slate-500"}`}>
-                          {days < 0 ? `Vencido há ${Math.abs(days)}d` : days === 0 ? "Vence hoje!" : `Vence em ${days} dia(s)`}
-                        </span>
-                      </div>
-                    </div>
-                    <ExpiryBadge urgency={urgency} size="md" />
+                      <ExpiryBadge urgency={urgency} size="md" />
+                    </button>
                   </li>
                 );
               })}
@@ -189,27 +192,30 @@ export default function DashboardPage() {
                   const isOutOfStock = p.quantity === 0;
                   const pct = Math.min(100, Math.round((p.quantity / (p.minStock || 1)) * 100));
                   return (
-                    <li
-                      key={p.id}
-                      onClick={() => navigate("/estoque")}
-                      className="p-3 rounded-xl hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-200/80 group"
-                    >
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-800 mb-1.5">
-                        <span className="truncate pr-2 group-hover:text-amber-700 transition-colors">{p.name}</span>
-                        <span className={`shrink-0 font-mono text-[11px] px-2 py-0.5 rounded-md font-bold ${
-                          isOutOfStock ? "bg-red-100 text-red-700 border border-red-200" : "bg-amber-100 text-amber-800 border border-amber-200"
-                        }`}>
-                          {isOutOfStock ? "Esgotado (0)" : `${p.quantity} / ${p.minStock} un`}
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            isOutOfStock ? "bg-red-500" : "bg-amber-500"
-                          }`}
-                          style={{ width: `${Math.max(8, pct)}%` }}
-                        />
-                      </div>
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/estoque?search=${encodeURIComponent(p.name)}`)}
+                        aria-label={`Localizar ${p.name} no estoque`}
+                        className="w-full text-left p-3 rounded-xl hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-amber-600 transition border border-transparent hover:border-slate-200/80 group"
+                      >
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-800 mb-1.5">
+                          <span className="truncate pr-2 group-hover:text-amber-700 transition-colors">{p.name}</span>
+                          <span className={`shrink-0 font-mono text-[11px] px-2 py-0.5 rounded-md font-bold ${
+                            isOutOfStock ? "bg-red-100 text-red-700 border border-red-200" : "bg-amber-100 text-amber-800 border border-amber-200"
+                          }`}>
+                            {isOutOfStock ? "Esgotado (0)" : `${p.quantity} / ${p.minStock} un`}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              isOutOfStock ? "bg-red-500" : "bg-amber-500"
+                            }`}
+                            style={{ width: `${Math.max(8, pct)}%` }}
+                          />
+                        </div>
+                      </button>
                     </li>
                   );
                 })}

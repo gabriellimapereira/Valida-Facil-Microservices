@@ -7,8 +7,8 @@ import LoginPage from "./LoginPage";
 import { AuthProvider } from "../context/AuthContext";
 import { ToastProvider } from "../context/ToastContext";
 
-// authService/profileService são os únicos pontos que tocariam o Supabase
-// de verdade — substituímos os dois por dublês controlados pelo teste.
+// authService/profileService fazem chamadas de API — substituímos ambos por
+// dublês controlados pelo teste.
 vi.mock("../services/authService", () => ({
   getSessionUser: vi.fn(),
   onAuthStateChange: vi.fn(),
@@ -78,25 +78,62 @@ describe("LoginPage", () => {
     renderLoginPage();
     await waitFor(() => expect(screen.getByRole("button", { name: /^entrar$/i })).not.toBeDisabled());
 
+    await user.type(screen.getByLabelText("E-mail corporativo"), "contato@empresa.com");
     await user.type(screen.getByPlaceholderText("••••••••"), "senha-errada");
     await user.click(screen.getByRole("button", { name: /^entrar$/i }));
 
-    expect(await screen.findByText("Credenciais inválidas.")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Credenciais inválidas.");
     expect(screen.queryByText("Tela do dashboard")).not.toBeInTheDocument();
   });
 
-  it("não deixa enviar o formulário sem preencher e-mail ou senha", async () => {
-    authService.login.mockRejectedValue(new Error("Informe usuário/e-mail e senha para continuar."));
+  it("associa rótulos aos campos e mantém a ordem de foco por teclado", async () => {
     const user = userEvent.setup();
 
     renderLoginPage();
     await waitFor(() => expect(screen.getByRole("button", { name: /^entrar$/i })).not.toBeDisabled());
 
-    // Limpa o e-mail pré-preenchido e tenta enviar sem senha.
-    await user.clear(screen.getByPlaceholderText("seuemail@empresa.com"));
+    const email = screen.getByLabelText("E-mail corporativo");
+    const password = screen.getByLabelText("Senha");
+    expect(email).toHaveAttribute("autocomplete", "username");
+    expect(password).toHaveAttribute("autocomplete", "current-password");
+
+    email.focus();
+    expect(email).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: /esqueci minha senha/i })).toHaveFocus();
+    await user.tab();
+    expect(password).toHaveFocus();
+  });
+
+  it("permite conferir e ocultar a senha usando um controle acessível", async () => {
+    const user = userEvent.setup();
+
+    renderLoginPage();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^entrar$/i })).not.toBeDisabled());
+
+    const password = screen.getByLabelText("Senha");
+    await user.type(password, "senha-segura");
+    expect(password).toHaveAttribute("type", "password");
+
+    const showPassword = screen.getByRole("button", { name: "Mostrar senha" });
+    await user.click(showPassword);
+    expect(password).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "Ocultar senha" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Ocultar senha" }));
+    expect(password).toHaveAttribute("type", "password");
+  });
+
+  it("usa validação nativa para não enviar campos obrigatórios vazios", async () => {
+    const user = userEvent.setup();
+
+    renderLoginPage();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^entrar$/i })).not.toBeDisabled());
     await user.click(screen.getByRole("button", { name: /^entrar$/i }));
 
-    expect(await screen.findByText(/informe usuário\/e-mail e senha/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("E-mail corporativo")).toBeInvalid();
+    expect(screen.getByLabelText("Senha")).toBeInvalid();
+    expect(authService.login).not.toHaveBeenCalled();
   });
 });
 
@@ -133,7 +170,7 @@ describe("LoginPage — esqueci minha senha", () => {
     await user.click(screen.getByRole("button", { name: /esqueci minha senha/i }));
     await user.click(screen.getByRole("button", { name: /enviar link de redefinição/i }));
 
-    expect(await screen.findByText(/informe o e-mail da sua conta/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("E-mail cadastrado")).toBeInvalid();
     expect(authService.requestPasswordReset).not.toHaveBeenCalled();
   });
 
@@ -161,7 +198,7 @@ describe("LoginPage — validação de senha mínima", () => {
     renderLoginPage();
 
     await waitFor(() => expect(screen.getByRole("button", { name: /^entrar$/i })).not.toBeDisabled());
-
+    await user.type(screen.getByLabelText("E-mail corporativo"), "teste@empresa.com");
     await user.type(screen.getByPlaceholderText("••••••••"), "1234567"); // 7 caracteres
     await user.click(screen.getByRole("button", { name: /^entrar$/i }));
 

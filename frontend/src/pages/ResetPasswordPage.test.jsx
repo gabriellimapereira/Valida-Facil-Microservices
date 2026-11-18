@@ -7,18 +7,17 @@ import ResetPasswordPage from "./ResetPasswordPage";
 import { ToastProvider } from "../context/ToastContext";
 
 vi.mock("../services/authService", () => ({
-  getSessionUser: vi.fn(),
+  validateActionToken: vi.fn(),
   updatePassword: vi.fn(),
   logout: vi.fn().mockResolvedValue(true),
-  onAuthStateChange: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
 }));
 
 import * as authService from "../services/authService";
 
-function renderPage() {
+function renderPage(token = "reset-token") {
   return render(
     <ToastProvider>
-      <MemoryRouter initialEntries={["/redefinir-senha"]}>
+      <MemoryRouter initialEntries={[`/redefinir-senha?token=${token}`]}>
         <Routes>
           <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
           <Route path="/login" element={<div>Tela de login</div>} />
@@ -33,16 +32,16 @@ describe("ResetPasswordPage", () => {
     vi.clearAllMocks();
   });
 
-  it("mostra erro de link inválido quando não há sessão de recuperação", async () => {
-    authService.getSessionUser.mockResolvedValue(null);
+  it("mostra erro de link inválido quando o token expirou", async () => {
+    authService.validateActionToken.mockResolvedValue(false);
 
     renderPage();
 
     expect(await screen.findByText(/link inválido ou expirado/i)).toBeInTheDocument();
   });
 
-  it("com sessão de recuperação válida, permite definir a nova senha", async () => {
-    authService.getSessionUser.mockResolvedValue({ id: "user-1", email: "a@empresa.com" });
+  it("com token de recuperação válido, permite definir a nova senha", async () => {
+    authService.validateActionToken.mockResolvedValue(true);
     authService.updatePassword.mockResolvedValue(true);
     const user = userEvent.setup();
 
@@ -56,12 +55,12 @@ describe("ResetPasswordPage", () => {
     await user.click(screen.getByRole("button", { name: /salvar nova senha/i }));
 
     await waitFor(() => expect(screen.getByText(/senha alterada/i)).toBeInTheDocument());
-    expect(authService.updatePassword).toHaveBeenCalledWith("senhaNova123");
+    expect(authService.updatePassword).toHaveBeenCalledWith("reset-token", "senhaNova123", "password_reset");
     expect(authService.logout).toHaveBeenCalled();
   });
 
   it("bloqueia senha curta antes de chamar o backend", async () => {
-    authService.getSessionUser.mockResolvedValue({ id: "user-1", email: "a@empresa.com" });
+    authService.validateActionToken.mockResolvedValue(true);
     const user = userEvent.setup();
 
     renderPage();
@@ -77,7 +76,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("bloqueia quando as senhas não coincidem", async () => {
-    authService.getSessionUser.mockResolvedValue({ id: "user-1", email: "a@empresa.com" });
+    authService.validateActionToken.mockResolvedValue(true);
     const user = userEvent.setup();
 
     renderPage();

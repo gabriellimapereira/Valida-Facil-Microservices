@@ -1,197 +1,112 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockFrom = vi.fn();
-const mockUpload = vi.fn();
-const mockGetPublicUrl = vi.fn();
-const mockStorageFrom = vi.fn(() => ({
-  upload: mockUpload,
-  getPublicUrl: mockGetPublicUrl,
-}));
+const mockApiGet = vi.fn();
+const mockApiPost = vi.fn();
+const mockApiPostFormData = vi.fn();
+const mockApiPatch = vi.fn();
+const mockApiDelete = vi.fn();
 
-vi.mock("../lib/supabaseClient", () => ({
-  isSupabaseConfigured: true,
-  supabase: {
-    from: (...args) => mockFrom(...args),
-    storage: {
-      from: (...args) => mockStorageFrom(...args),
-    },
+vi.mock("../lib/apiClient", () => ({
+  getAccessToken: () => "test-token",
+  apiClient: {
+    get: (...args) => mockApiGet(...args),
+    post: (...args) => mockApiPost(...args),
+    postFormData: (...args) => mockApiPostFormData(...args),
+    patch: (...args) => mockApiPatch(...args),
+    delete: (...args) => mockApiDelete(...args),
   },
 }));
 
-const mockApiPost = vi.fn();
-vi.mock("../lib/apiClient", () => ({
-  apiClient: { post: (...args) => mockApiPost(...args) },
-}));
-
-import { fetchCompany, updateCompany, createCompany, uploadCompanyLogo, removeCompanyLogo } from "./companyService";
-
-function makeChain(result) {
-  const chain = {};
-  ["select", "eq", "update", "maybeSingle", "single"].forEach((method) => {
-    chain[method] = vi.fn(() => chain);
-  });
-  chain.then = (resolve) => resolve(result);
-  return chain;
-}
+import {
+  fetchCompany,
+  updateCompany,
+  createCompany,
+  uploadCompanyLogo,
+  removeCompanyLogo,
+  fetchCompanyMembers,
+  inviteTeamMember,
+  updateMember,
+  removeMember,
+} from "./companyService";
 
 beforeEach(() => {
-  mockFrom.mockReset();
+  mockApiGet.mockReset();
   mockApiPost.mockReset();
-  mockUpload.mockReset();
-  mockGetPublicUrl.mockReset();
-  mockStorageFrom.mockClear();
+  mockApiPostFormData.mockReset();
+  mockApiPatch.mockReset();
+  mockApiDelete.mockReset();
 });
 
-describe("fetchCompany", () => {
-  it("mapeia notification_email -> notificationEmail e logo_url -> logoUrl", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: {
-          id: "company-1",
-          name: "Empório Boa Safra",
-          segment: "Atacado & Varejo",
-          email: "contato@empresa.com",
-          notification_email: "estoque@empresa.com",
-          phone: "(89) 3222-4455",
-          cnpj: "12.345.678/0001-90",
-          address: "Rua X, 100",
-          initials: "EB",
-          logo_url: "https://supabase.co/storage/v1/object/public/logos/c1/logo.png",
-        },
-        error: null,
-      })
-    );
-
-    const result = await fetchCompany("company-1");
-
-    expect(result.notificationEmail).toBe("estoque@empresa.com");
-    expect(result.name).toBe("Empório Boa Safra");
-    expect(result.logoUrl).toBe("https://supabase.co/storage/v1/object/public/logos/c1/logo.png");
-  });
-
-  it("retorna null sem companyId, sem consultar o Supabase", async () => {
-    const result = await fetchCompany(null);
-
-    expect(result).toBeNull();
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
-  it("propaga erro do Supabase", async () => {
-    mockFrom.mockReturnValue(makeChain({ data: null, error: new Error("empresa não encontrada") }));
-
-    await expect(fetchCompany("company-1")).rejects.toThrow("empresa não encontrada");
-  });
-});
-
-describe("updateCompany", () => {
-  it("converte notificationEmail -> notification_email e logoUrl -> logo_url no payload", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: {
-          id: "company-1",
-          name: "Novo Nome",
-          notification_email: "novo@empresa.com",
-          logo_url: "https://url.com/logo.png",
-        },
-        error: null,
-      })
-    );
-
-    const result = await updateCompany("company-1", {
-      name: "Novo Nome",
-      notificationEmail: "novo@empresa.com",
-      logoUrl: "https://url.com/logo.png",
-    });
-
-    expect(result.notificationEmail).toBe("novo@empresa.com");
-    expect(result.name).toBe("Novo Nome");
-    expect(result.logoUrl).toBe("https://url.com/logo.png");
-  });
-
-  it("ignora chaves que não existem no mapeamento (evita enviar lixo pro banco)", async () => {
-    mockFrom.mockReturnValue(makeChain({ data: { id: "company-1", name: "X" }, error: null }));
-
-    await updateCompany("company-1", { name: "X", campoQueNaoExiste: "deveria sumir" });
-
-    expect(mockFrom).toHaveBeenCalledWith("companies");
-  });
-});
-
-describe("uploadCompanyLogo", () => {
-  it("bloqueia formato de arquivo não suportado", async () => {
-    const invalidFile = new File(["dummy"], "teste.exe", { type: "application/x-msdownload" });
-    await expect(uploadCompanyLogo("company-1", invalidFile)).rejects.toThrow("Formato inválido");
-  });
-
-  it("bloqueia arquivo maior que 3MB", async () => {
-    const bigFile = new File([new ArrayBuffer(4 * 1024 * 1024)], "foto.png", { type: "image/png" });
-    await expect(uploadCompanyLogo("company-1", bigFile)).rejects.toThrow("máximo 3MB");
-  });
-
-  it("faz upload no bucket logos e atualiza a empresa", async () => {
-    const file = new File(["dummy"], "minha-logo.png", { type: "image/png" });
-    mockUpload.mockResolvedValue({ data: { path: "company-1/logo.png" }, error: null });
-    mockGetPublicUrl.mockReturnValue({ data: { publicUrl: "https://storage.fake/logos/company-1/logo.png" } });
-
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: { id: "company-1", name: "Empresa", logo_url: "https://storage.fake/logos/company-1/logo.png" },
-        error: null,
-      })
-    );
-
-    const result = await uploadCompanyLogo("company-1", file);
-
-    expect(mockStorageFrom).toHaveBeenCalledWith("logos");
-    expect(mockUpload).toHaveBeenCalled();
-    expect(result.logoUrl).toBe("https://storage.fake/logos/company-1/logo.png");
-  });
-});
-
-describe("removeCompanyLogo", () => {
-  it("chama updateCompany com logoUrl nulo", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: { id: "company-1", name: "Empresa", logo_url: null },
-        error: null,
-      })
-    );
-
-    const result = await removeCompanyLogo("company-1");
-
-    expect(result.logoUrl).toBeNull();
-  });
-});
-
-describe("createCompany (onboarding)", () => {
-  it("chama o backend (não o Supabase direto) com o payload em snake_case", async () => {
-    mockApiPost.mockResolvedValue({
-      id: "company-novo",
-      name: "Empório Boa Safra",
+describe("companyService via API Gateway", () => {
+  it("maps company fields and uses Identity endpoints", async () => {
+    mockApiGet.mockResolvedValue({
+      id: "c1",
+      name: "Empresa",
       notification_email: "estoque@empresa.com",
-      initials: "EB",
+      logo_url: "/storage/logos/c1/logo.png",
     });
-
-    const result = await createCompany({
-      name: "Empório Boa Safra",
+    await expect(fetchCompany("c1")).resolves.toMatchObject({
+      id: "c1",
       notificationEmail: "estoque@empresa.com",
-      initials: "EB",
+      logoUrl: "/storage/logos/c1/logo.png",
     });
+    expect(mockApiGet).toHaveBeenCalledWith("/companies/me");
 
-    expect(mockApiPost).toHaveBeenCalledWith("/companies", {
-      name: "Empório Boa Safra",
-      notification_email: "estoque@empresa.com",
-      initials: "EB",
+    mockApiPatch.mockResolvedValue({ id: "c1", name: "Atualizada", notification_email: "novo@empresa.com" });
+    await expect(updateCompany("c1", { name: "Atualizada", notificationEmail: "novo@empresa.com" }))
+      .resolves.toMatchObject({ name: "Atualizada", notificationEmail: "novo@empresa.com" });
+    expect(mockApiPatch).toHaveBeenCalledWith("/companies/me", {
+      name: "Atualizada",
+      notification_email: "novo@empresa.com",
     });
-    expect(mockFrom).not.toHaveBeenCalled();
-    expect(result.notificationEmail).toBe("estoque@empresa.com");
   });
 
-  it("propaga erro do backend (ex: usuário já tem empresa)", async () => {
-    mockApiPost.mockRejectedValue(new Error("Este usuário já está vinculado a uma empresa."));
+  it("creates a company through Identity", async () => {
+    mockApiPost.mockResolvedValue({ id: "c2", name: "Nova", notification_email: "n@empresa.com" });
+    await expect(createCompany({ name: "Nova", notificationEmail: "n@empresa.com" }))
+      .resolves.toMatchObject({ id: "c2", notificationEmail: "n@empresa.com" });
+    expect(mockApiPost).toHaveBeenCalledWith("/companies", {
+      name: "Nova",
+      notification_email: "n@empresa.com",
+    });
+  });
 
-    await expect(createCompany({ name: "X", notificationEmail: "a@b.com", initials: "X" })).rejects.toThrow(
-      "Este usuário já está vinculado a uma empresa."
-    );
+  it("uploads and removes a logo through the backend", async () => {
+    const file = new File(["logo"], "logo.png", { type: "image/png" });
+    mockApiPostFormData.mockResolvedValue({ id: "c1", logo_url: "/storage/logos/c1/logo.png" });
+    await expect(uploadCompanyLogo("c1", file)).resolves.toMatchObject({
+      logoUrl: "/storage/logos/c1/logo.png",
+    });
+    expect(mockApiPostFormData).toHaveBeenCalledWith("/companies/logo", expect.any(FormData));
+
+    mockApiDelete.mockResolvedValue({ id: "c1", logo_url: null });
+    await expect(removeCompanyLogo()).resolves.toMatchObject({ logoUrl: null });
+    expect(mockApiDelete).toHaveBeenCalledWith("/companies/logo");
+  });
+
+  it("uses the API for members, invitations, edits and removals", async () => {
+    mockApiGet.mockResolvedValue([
+      { id: "u1", full_name: "Ana", email: "ana@empresa.com", role: "operador", store_id: "s1", store_name: "Centro" },
+    ]);
+    await expect(fetchCompanyMembers("c1")).resolves.toMatchObject([
+      { id: "u1", fullName: "Ana", storeId: "s1", storeName: "Centro" },
+    ]);
+
+    mockApiPost.mockResolvedValue({ user_id: "u2", email: "b@empresa.com" });
+    await inviteTeamMember({ email: "b@empresa.com", fullName: "Bia", storeId: "s1" });
+    expect(mockApiPost).toHaveBeenCalledWith("/companies/invite", {
+      email: "b@empresa.com",
+      full_name: "Bia",
+      role: "operador",
+      store_id: "s1",
+    });
+
+    mockApiPatch.mockResolvedValue({ id: "u1", full_name: "Ana", store_id: null });
+    await expect(updateMember("u1", { storeId: null })).resolves.toMatchObject({ storeId: null });
+    expect(mockApiPatch).toHaveBeenCalledWith("/companies/members/u1", { store_id: null });
+
+    mockApiDelete.mockResolvedValue(null);
+    await removeMember("u1");
+    expect(mockApiDelete).toHaveBeenCalledWith("/companies/members/u1");
   });
 });

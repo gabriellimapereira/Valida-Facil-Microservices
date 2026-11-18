@@ -56,13 +56,13 @@ describe("MovementModal", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("limita a quantidade digitada a no máximo 1.000.000 unidades", () => {
+  it("permite informar quantidades acima de 1.000.000 unidades sem limite artificial", () => {
     render(<MovementModal product={mockProduct} onClose={vi.fn()} onSubmit={vi.fn()} />);
 
     const amountInput = screen.getByPlaceholderText("0");
     fireEvent.change(amountInput, { target: { value: "9999999" } });
 
-    expect(amountInput.value).toBe("1000000");
+    expect(amountInput.value).toBe("9999999");
   });
 
   it("envia payload correto no submit", async () => {

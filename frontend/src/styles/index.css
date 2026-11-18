@@ -11,57 +11,14 @@ body {
   background-color: #F1F5F9;
 }
 
+:focus-visible {
+  outline: 2px solid #D97706;
+  outline-offset: 3px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-/* =========================================================================
-   Efeitos Neon Glow para Alertas de Validade (Valida Fácil)
-   ========================================================================= */
-@keyframes neonPulseRed {
-  0%, 100% {
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.7), 0 0 14px rgba(220, 38, 38, 0.4), inset 0 0 4px rgba(239, 68, 68, 0.2);
-    border-color: #EF4444;
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.95), 0 0 22px rgba(220, 38, 38, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.35);
-    border-color: #FF2E4D;
-  }
-}
-
-@keyframes neonPulseAmber {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(245, 158, 11, 0.65), 0 0 12px rgba(217, 119, 6, 0.35), inset 0 0 3px rgba(245, 158, 11, 0.15);
-    border-color: #F59E0B;
-  }
-  50% {
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.85), 0 0 18px rgba(217, 119, 6, 0.5), inset 0 0 5px rgba(245, 158, 11, 0.3);
-    border-color: #FFA500;
-  }
-}
-
-@keyframes neonPulseTeal {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(13, 148, 136, 0.5), 0 0 10px rgba(20, 184, 166, 0.25);
-    border-color: #14B8A6;
-  }
-  50% {
-    box-shadow: 0 0 7px rgba(13, 148, 136, 0.75), 0 0 14px rgba(20, 184, 166, 0.4);
-    border-color: #00E5CC;
-  }
-}
-
-.neon-glow-critical {
-  animation: neonPulseRed 2s infinite ease-in-out;
-}
-
-.neon-glow-high {
-  animation: neonPulseAmber 2.5s infinite ease-in-out;
-}
-
-.neon-glow-medium {
-  animation: neonPulseTeal 3s infinite ease-in-out;
 }
 
 /* =========================================================================
@@ -88,3 +45,13 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   filter: invert(40%) sepia(90%) saturate(2000%) hue-rotate(15deg) brightness(90%) contrast(100%);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

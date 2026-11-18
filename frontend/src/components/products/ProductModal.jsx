@@ -6,8 +6,6 @@ import { ProductContext } from "../../context/ProductContext";
 import TactileButton from "../ui/TactileButton";
 import DatePicker from "../ui/DatePicker";
 
-const MAX_VALUE = 1_000_000;
-
 export const CATEGORY_PREFIXES = {
   perecivel: "ALM",
   eletronicos: "ELE",
@@ -98,9 +96,6 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
     val = val.replace(/[^0-9.,]/g, "").replace(",", ".");
     const num = Number(val);
     if (!isNaN(num)) {
-      if (num > MAX_VALUE) {
-        val = String(MAX_VALUE);
-      }
       set("price", val);
     }
   };
@@ -115,9 +110,6 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
     val = val.replace(/\D/g, "");
     const num = Number(val);
     if (!isNaN(num)) {
-      if (num > MAX_VALUE) {
-        val = String(MAX_VALUE);
-      }
       set(field, val);
     }
   };
@@ -142,22 +134,16 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
     const priceNum = Number(form.price);
     if (form.price === "" || isNaN(priceNum) || priceNum < 0) {
       e.price = "Informe um valor unitário válido.";
-    } else if (priceNum > MAX_VALUE) {
-      e.price = `O valor unitário não pode ultrapassar R$ ${MAX_VALUE.toLocaleString("pt-BR")},00.`;
     }
 
     const qtyNum = Number(form.quantity);
     if (form.quantity === "" || isNaN(qtyNum) || qtyNum < 0 || !Number.isInteger(qtyNum)) {
       e.quantity = "Informe uma quantidade válida (número inteiro).";
-    } else if (qtyNum > MAX_VALUE) {
-      e.quantity = `A quantidade não pode ultrapassar ${MAX_VALUE.toLocaleString("pt-BR")} unidades.`;
     }
 
     const minStockNum = Number(form.minStock) || 0;
     if (minStockNum < 0 || !Number.isInteger(minStockNum)) {
       e.minStock = "O estoque mínimo deve ser um número inteiro positivo.";
-    } else if (minStockNum > MAX_VALUE) {
-      e.minStock = `O estoque mínimo não pode ultrapassar ${MAX_VALUE.toLocaleString("pt-BR")} unidades.`;
     }
 
     if (form.supplier && form.supplier.length > 150) {
@@ -258,13 +244,11 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Preço unitário (R$) <span className="text-amber-600">*</span></label>
-                <span className="text-[10px] text-slate-400 font-mono">máx 1.000.000</span>
               </div>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                max={MAX_VALUE}
                 value={form.price}
                 onKeyDown={handlePriceKeyDown}
                 onChange={handlePriceChange}
@@ -279,12 +263,10 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
                 <label className="block text-xs font-semibold text-slate-700">
                   Quantidade {isEdit ? <span className="text-slate-400 font-normal">(estoque inicial)</span> : <span className="text-amber-600">*</span>}
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">máx 1.000.000</span>
               </div>
               <input
                 type="number"
                 min="0"
-                max={MAX_VALUE}
                 step="1"
                 value={form.quantity}
                 onKeyDown={handleIntegerKeyDown}
@@ -305,12 +287,10 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Estoque mínimo</label>
-                <span className="text-[10px] text-slate-400 font-mono">máx 1.000.000</span>
               </div>
               <input
                 type="number"
                 min="0"
-                max={MAX_VALUE}
                 step="1"
                 value={form.minStock}
                 onKeyDown={handleIntegerKeyDown}

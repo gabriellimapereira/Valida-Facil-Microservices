@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FileDown, Plus } from "lucide-react";
+import { FileDown, Info, Plus } from "lucide-react";
 import ProductFilters from "../components/products/ProductFilters";
 import ProductTable from "../components/products/ProductTable";
 import ProductModal from "../components/products/ProductModal";
@@ -8,6 +8,7 @@ import ConfirmDeleteModal from "../components/products/ConfirmDeleteModal";
 import MovementModal from "../components/products/MovementModal";
 import ReportModal from "../components/products/ReportModal";
 import TactileButton from "../components/ui/TactileButton";
+import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/ProductContext";
 import { useToast } from "../context/ToastContext";
 import * as movementService from "../services/movementService";
@@ -17,11 +18,17 @@ const PAGE_SIZE = 8;
 const DEFAULT_FILTERS = { search: "", category: "all", dateFrom: "", dateTo: "", sortPrice: "none" };
 
 export default function StockPage() {
+  const { storeId: userStoreId } = useAuth();
+  const isBranchOperator = Boolean(userStoreId);
+
   const { products, addProduct, editProduct, removeProduct, syncProductQuantity } = useProducts();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_FILTERS,
+    search: searchParams.get("search") || "",
+  }));
   const [sortField, setSortField] = useState("none");
   const [sortOrder, setSortOrder] = useState("asc");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -33,16 +40,18 @@ export default function StockPage() {
   const [movingProduct, setMovingProduct] = useState(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // Abre o modal de cadastro automaticamente ao chegar via /estoque?novo=1
+  // Abre o modal de cadastro automaticamente ao chegar via /estoque?novo=1 (exceto se for operador de filial)
   useEffect(() => {
     if (searchParams.get("novo") === "1") {
-      setEditing(null);
-      setModalOpen(true);
+      if (!isBranchOperator) {
+        setEditing(null);
+        setModalOpen(true);
+      }
       searchParams.delete("novo");
       setSearchParams(searchParams, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isBranchOperator]);
 
   // Sincroniza sortPrice de filters com sortField
   useEffect(() => {
@@ -120,6 +129,10 @@ export default function StockPage() {
   };
 
   const handleSave = async (data) => {
+    if (isBranchOperator) {
+      addToast("Operadores de filial têm acesso somente leitura ao armazém central.", "error");
+      return;
+    }
     try {
       if (editing) {
         await editProduct(editing.id, data);
@@ -136,6 +149,11 @@ export default function StockPage() {
   };
 
   const handleDelete = async () => {
+    if (isBranchOperator) {
+      addToast("Operadores de filial têm acesso somente leitura ao armazém central.", "error");
+      setDeleting(null);
+      return;
+    }
     try {
       await removeProduct(deleting.id);
       addToast(`"${deleting.name}" removido do estoque.`);
@@ -148,8 +166,13 @@ export default function StockPage() {
 
   // Passa pelo backend (POST /movements): atualiza a quantidade + grava o
   // histórico numa transação só, e decide lá se dispara e-mail de estoque
-  // baixo — por isso não editamos products.quantity direto pelo Supabase.
+  // baixo — por isso não editamos products.quantity diretamente no frontend.
   const handleMovementSubmit = async ({ movementType, quantityDelta, note }) => {
+    if (isBranchOperator) {
+      addToast("Operadores de filial não podem lançar movimentações no armazém central.", "error");
+      setMovingProduct(null);
+      return;
+    }
     const result = await movementService.recordMovement({
       productId: movingProduct.id,
       movementType,
@@ -189,18 +212,34 @@ export default function StockPage() {
             <FileDown size={17} className="mr-1.5 shrink-0" />
             Gerar relatório
           </TactileButton>
-          <TactileButton
-            variant="amber"
-            onClick={() => { setEditing(null); setModalOpen(true); }}
-            padding="10px 20px"
-            rounded={12}
-            className="w-full sm:w-auto"
-          >
-            <Plus size={17} className="mr-1.5 shrink-0" />
-            Novo produto
-          </TactileButton>
+          {!isBranchOperator && (
+            <TactileButton
+              variant="amber"
+              onClick={() => { setEditing(null); setModalOpen(true); }}
+              padding="10px 20px"
+              rounded={12}
+              className="w-full sm:w-auto"
+            >
+              <Plus size={17} className="mr-1.5 shrink-0" />
+              Novo produto
+            </TactileButton>
+          )}
         </div>
       </div>
+
+      {isBranchOperator && (
+        <div className="flex items-start gap-3 p-3.5 sm:p-4 rounded-xl border border-amber-200/90 bg-amber-50/80 text-amber-950 text-xs sm:text-sm shadow-xs">
+          <Info size={19} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="font-semibold text-amber-900">
+              Armazém Central (Modo Leitura / Consulta)
+            </p>
+            <p className="text-amber-800 leading-relaxed">
+              Como operador de filial, você possui acesso de consulta aos produtos do CD. Para abastecer o armazém da sua loja, faça uma solicitação através da aba <strong className="font-medium underline decoration-amber-400">Requisições</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       <ProductFilters
         filters={filters}
@@ -218,14 +257,15 @@ export default function StockPage() {
         totalCount={filtered.length}
         pageSize={PAGE_SIZE}
         setPage={setPage}
-        onEdit={(p) => { setEditing(p); setModalOpen(true); }}
-        onDelete={(p) => setDeleting(p)}
-        onMovement={(p) => setMovingProduct(p)}
+        readOnly={isBranchOperator}
+        onEdit={isBranchOperator ? undefined : (p) => { setEditing(p); setModalOpen(true); }}
+        onDelete={isBranchOperator ? undefined : (p) => setDeleting(p)}
+        onMovement={isBranchOperator ? undefined : (p) => setMovingProduct(p)}
         sortField={sortField}
         sortOrder={sortOrder}
         onSort={handleSort}
         onClearFilters={clearFilters}
-        onNewProduct={() => { setEditing(null); setModalOpen(true); }}
+        onNewProduct={isBranchOperator ? undefined : () => { setEditing(null); setModalOpen(true); }}
         hasActiveFilters={hasActiveFilters}
       />
 

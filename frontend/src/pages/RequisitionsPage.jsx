@@ -1,11 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { CheckCircle2, ChevronRight, ClipboardList, Clock, PackageCheck, Plus, Send, Truck, XCircle } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  PackageCheck,
+  Plus,
+  SlidersHorizontal,
+  Truck,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useProducts } from "../context/ProductContext";
 import { useToast } from "../context/ToastContext";
 import * as requisitionService from "../services/requisitionService";
 import * as storeService from "../services/storeService";
+import { fmtDate } from "../utils/formatters";
 import RequisitionModal from "../components/requisitions/RequisitionModal";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
+import ExpiryBadge from "../components/ui/ExpiryBadge";
 import TactileButton from "../components/ui/TactileButton";
 
 const STATUS_CONFIG = {
@@ -16,9 +28,11 @@ const STATUS_CONFIG = {
   cancelada: { label: "Cancelada", bg: "bg-red-50", text: "text-red-700", border: "border-red-200", icon: XCircle },
 };
 
+const STOCK_SYNC_STATUSES = new Set(["despachada", "recebida", "cancelada"]);
+
 export default function RequisitionsPage() {
-  const { role } = useAuth();
-  const { products } = useProducts();
+  const { role, storeId: userStoreId } = useAuth();
+  const { products, refreshProducts } = useProducts();
   const { addToast } = useToast();
   const isAdmin = role === "admin";
 
@@ -27,7 +41,11 @@ export default function RequisitionsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+
+  const [editingApprovalId, setEditingApprovalId] = useState(null);
+  const [approvalDrafts, setApprovalDrafts] = useState({});
+  const [reqToCancel, setReqToCancel] = useState(null);
 
   const loadData = async () => {
     try {
@@ -55,20 +73,70 @@ export default function RequisitionsPage() {
     setRequisitions((prev) => [created, ...prev]);
   };
 
-  const handleStatusChange = async (reqId, newStatus) => {
+  const handleStatusChange = async (reqId, newStatus, itemsApproved = undefined) => {
     try {
-      setActionLoading(true);
-      await requisitionService.updateRequisitionStatus(reqId, { status: newStatus });
-      addToast(`Status da requisição alterado para '${STATUS_CONFIG[newStatus]?.label || newStatus}'!`, "success");
+      setActionLoadingId(reqId);
+      const updated = await requisitionService.updateRequisitionStatus(reqId, {
+        status: newStatus,
+        itemsApproved,
+      });
       setRequisitions((prev) =>
-        prev.map((r) => (r.id === reqId ? { ...r, status: newStatus } : r))
+        prev.map((r) => (r.id === reqId ? { ...r, ...updated, status: updated?.status || newStatus } : r))
+      );
+      if (editingApprovalId === reqId) {
+        setEditingApprovalId(null);
+        setApprovalDrafts({});
+      }
+      setReqToCancel(null);
+
+      if (STOCK_SYNC_STATUSES.has(newStatus) && typeof refreshProducts === "function") {
+        await refreshProducts();
+      }
+      addToast(
+        `Status da requisição alterado para '${STATUS_CONFIG[newStatus]?.label || newStatus}'!`,
+        "success"
       );
     } catch (err) {
       addToast(err.message || "Não foi possível atualizar o status.", "error");
     } finally {
-      setActionLoading(false);
+      setActionLoadingId(null);
     }
   };
+
+  const openApprovalEditor = (req) => {
+    const draft = {};
+    for (const it of req.items || []) {
+      draft[it.productId] = String(it.quantityApproved ?? it.quantityRequested);
+    }
+    setApprovalDrafts(draft);
+    setEditingApprovalId(req.id);
+  };
+
+  const handleConfirmCustomApproval = async (req) => {
+    const itemsApproved = [];
+    for (const it of req.items || []) {
+      const raw = approvalDrafts[it.productId];
+      const parsed = Number.parseInt(raw, 10);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        addToast("Informe quantidades aprovadas válidas (>= 0).", "error");
+        return;
+      }
+      itemsApproved.push({ productId: it.productId, quantityApproved: parsed });
+    }
+    if (itemsApproved.length > 0 && itemsApproved.every((x) => x.quantityApproved === 0)) {
+      addToast("Aprove ao menos uma unidade de algum item ou cancele a requisição.", "error");
+      return;
+    }
+    await handleStatusChange(req.id, "aprovada", itemsApproved);
+  };
+
+  const statusCounts = useMemo(() => {
+    const counts = { all: requisitions.length, pendente: 0, aprovada: 0, despachada: 0, recebida: 0, cancelada: 0 };
+    for (const r of requisitions) {
+      if (counts[r.status] !== undefined) counts[r.status] += 1;
+    }
+    return counts;
+  }, [requisitions]);
 
   const filteredRequisitions = requisitions.filter((r) => {
     if (statusFilter === "all") return true;
@@ -85,7 +153,7 @@ export default function RequisitionsPage() {
             Requisições de Reposição
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Fluxo de solicitação, aprovação e transferência de itens do Armazém Central para as Lojas
+            Fluxo de solicitação, aprovação, despacho SAGA no Armazém Central e recebimento nas Lojas
           </p>
         </div>
 
@@ -109,13 +177,20 @@ export default function RequisitionsPage() {
             key={tab.id}
             type="button"
             onClick={() => setStatusFilter(tab.id)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer inline-flex items-center gap-1.5 ${
               statusFilter === tab.id
                 ? "bg-navy text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                statusFilter === tab.id ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-600"
+              }`}
+            >
+              {statusCounts[tab.id] ?? 0}
+            </span>
           </button>
         ))}
       </div>
@@ -125,6 +200,9 @@ export default function RequisitionsPage() {
         {filteredRequisitions.map((r) => {
           const cfg = STATUS_CONFIG[r.status] || STATUS_CONFIG.pendente;
           const Icon = cfg.icon;
+          const isBusy = actionLoadingId === r.id;
+          const canActOnStore = isAdmin || !userStoreId || userStoreId === r.storeId;
+          const isEditingThis = editingApprovalId === r.id;
 
           return (
             <div
@@ -137,7 +215,7 @@ export default function RequisitionsPage() {
                     <Icon size={16} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-slate-900">{r.storeName || "Filial"}</span>
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
                         {cfg.label}
@@ -150,48 +228,91 @@ export default function RequisitionsPage() {
                 </div>
 
                 {/* Ações de Transição de Status */}
-                <div className="flex items-center gap-2">
-                  {isAdmin && r.status === "pendente" && (
-                    <button
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => handleStatusChange(r.id, "aprovada")}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold rounded-lg border border-blue-200 transition cursor-pointer"
-                    >
-                      Aprovar Requisição
-                    </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAdmin && r.status === "pendente" && !isEditingThis && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => openApprovalEditor(r)}
+                        className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <SlidersHorizontal size={12} />
+                        Ajustar Qtds
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => handleStatusChange(r.id, "aprovada")}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold rounded-lg border border-blue-200 transition cursor-pointer disabled:opacity-50"
+                      >
+                        {isBusy ? "Processando..." : "Aprovar Requisição"}
+                      </button>
+                    </>
+                  )}
+
+                  {isAdmin && r.status === "pendente" && isEditingThis && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => {
+                          setEditingApprovalId(null);
+                          setApprovalDrafts({});
+                        }}
+                        className="px-2.5 py-1.5 text-slate-500 hover:bg-slate-100 text-xs font-semibold rounded-lg transition cursor-pointer"
+                      >
+                        Cancelar Ajuste
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => handleConfirmCustomApproval(r)}
+                        className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-500 text-xs font-bold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {isBusy ? "Salvando..." : "Confirmar Aprovação"}
+                      </button>
+                    </>
                   )}
 
                   {isAdmin && r.status === "aprovada" && (
                     <button
                       type="button"
-                      disabled={actionLoading}
+                      disabled={isBusy}
+                      title="Deduz as quantidades aprovadas do Armazém Central e coloca em trânsito"
                       onClick={() => handleStatusChange(r.id, "despachada")}
-                      className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold rounded-lg border border-indigo-200 transition cursor-pointer"
+                      className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold rounded-lg border border-indigo-200 transition cursor-pointer disabled:opacity-50"
                     >
-                      Despachar do Armazém
+                      {isBusy ? "Despachando..." : "Despachar do Armazém"}
                     </button>
                   )}
 
-                  {r.status === "despachada" && (
+                  {r.status === "despachada" && canActOnStore && (
                     <button
                       type="button"
-                      disabled={actionLoading}
+                      disabled={isBusy}
                       onClick={() => handleStatusChange(r.id, "recebida")}
-                      className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold rounded-lg shadow-xs transition cursor-pointer"
+                      className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
                     >
-                      Confirmar Recebimento na Loja
+                      {isBusy ? "Confirmando..." : "Confirmar Recebimento na Loja"}
                     </button>
                   )}
 
-                  {r.status === "pendente" && (
+                  {((r.status === "pendente" && canActOnStore) ||
+                    (isAdmin && (r.status === "aprovada" || r.status === "despachada"))) && (
                     <button
                       type="button"
-                      disabled={actionLoading}
-                      onClick={() => handleStatusChange(r.id, "cancelada")}
-                      className="px-2.5 py-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 text-xs rounded-lg transition cursor-pointer"
+                      disabled={isBusy}
+                      onClick={() => {
+                        if (r.status === "pendente") {
+                          handleStatusChange(r.id, "cancelada");
+                        } else {
+                          setReqToCancel(r);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 text-xs font-semibold rounded-lg transition cursor-pointer disabled:opacity-50"
                     >
-                      Cancelar
+                      {r.status === "despachada" ? "Estornar Despacho" : "Cancelar"}
                     </button>
                   )}
                 </div>
@@ -201,20 +322,69 @@ export default function RequisitionsPage() {
               <div className="mt-3.5">
                 <p className="text-xs font-semibold text-slate-600 mb-2">Itens Solicitados:</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {(r.items || []).map((it) => (
-                    <div
-                      key={it.id}
-                      className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl text-xs border border-slate-100"
-                    >
-                      <div>
-                        <span className="font-mono text-[10px] text-slate-400 block">{it.productCode || "SKU"}</span>
-                        <span className="font-semibold text-slate-800">{it.productName || "Produto"}</span>
+                  {(r.items || []).map((it) => {
+                    const showApprovedDiff =
+                      r.status !== "pendente" &&
+                      it.quantityApproved != null &&
+                      it.quantityApproved !== it.quantityRequested;
+
+                    return (
+                      <div
+                        key={it.id}
+                        className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl text-xs border border-slate-100"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-mono text-[10px] text-slate-400 block">
+                            {it.productCode || "SKU"}
+                            {it.expiry ? ` • Val: ${fmtDate(it.expiry)}` : ""}
+                          </span>
+                          <span className="font-semibold text-slate-800 block truncate">
+                            {it.productName || "Produto"}
+                          </span>
+                          {it.expiry && (
+                            <div className="mt-1">
+                              <ExpiryBadge date={it.expiry} size="sm" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-right shrink-0 space-y-1">
+                          {isEditingThis ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="text-[10px] text-slate-400">Sol: {it.quantityRequested}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                aria-label={`Quantidade aprovada de ${it.productName || it.productId}`}
+                                value={approvalDrafts[it.productId] ?? String(it.quantityRequested)}
+                                onChange={(e) =>
+                                  setApprovalDrafts((prev) => ({
+                                    ...prev,
+                                    [it.productId]: e.target.value,
+                                  }))
+                                }
+                                className="w-20 px-2 py-1 text-center font-mono font-bold text-slate-900 bg-white rounded-md border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <span className="inline-block font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                {r.status !== "pendente" && it.quantityApproved != null
+                                  ? `${it.quantityApproved} un`
+                                  : `${it.quantityRequested} un`}
+                              </span>
+                              {showApprovedDiff && (
+                                <span className="block text-[10px] text-slate-400 font-mono">
+                                  Sol: {it.quantityRequested}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                        {it.quantityRequested} un
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {r.notes && (
@@ -244,8 +414,38 @@ export default function RequisitionsPage() {
         <RequisitionModal
           stores={stores}
           products={products}
+          userStoreId={userStoreId}
+          role={role}
           onClose={() => setModalOpen(false)}
           onSave={handleCreateRequisition}
+        />
+      )}
+
+      {reqToCancel && (
+        <ConfirmationModal
+          isOpen={!!reqToCancel}
+          onClose={() => actionLoadingId !== reqToCancel.id && setReqToCancel(null)}
+          onConfirm={() => handleStatusChange(reqToCancel.id, "cancelada")}
+          loading={actionLoadingId === reqToCancel.id}
+          title={
+            reqToCancel.status === "despachada"
+              ? "Estornar despacho e cancelar requisição?"
+              : "Cancelar requisição aprovada?"
+          }
+          description={
+            reqToCancel.status === "despachada" ? (
+              <>
+                Esta requisição para <strong className="text-slate-800">{reqToCancel.storeName}</strong> já foi despachada. Ao cancelar, o MS Stores acionará o MS Warehouse (compensação SAGA) para devolver as unidades ao Armazém Central automaticamente.
+              </>
+            ) : (
+              <>
+                Tem certeza que deseja cancelar a requisição para <strong className="text-slate-800">{reqToCancel.storeName}</strong>?
+              </>
+            )
+          }
+          confirmText={reqToCancel.status === "despachada" ? "Estornar e Cancelar" : "Cancelar Requisição"}
+          cancelText="Voltar"
+          variant="danger"
         />
       )}
     </div>

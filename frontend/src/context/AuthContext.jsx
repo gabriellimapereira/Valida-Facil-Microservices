@@ -7,8 +7,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  // Começa "true": o app precisa checar se já existe uma sessão salva do
-  // Supabase (localStorage) antes de decidir se mostra o login ou não —
+  // Começa "true": o app precisa checar se já existe uma sessão JWT salva
+  // antes de decidir se mostra o login ou não —
   // sem isso, recarregar a página sempre jogaria o usuário pra tela de
   // login mesmo estando logado.
   const [loading, setLoading] = useState(true);
@@ -16,6 +16,16 @@ export function AuthProvider({ children }) {
   const loadProfile = async (authUser) => {
     if (!authUser) {
       setProfile(null);
+      return;
+    }
+    if (authUser.company_id && authUser.role) {
+      setProfile({
+        id: authUser.id,
+        company_id: authUser.company_id,
+        role: authUser.role,
+        full_name: authUser.full_name,
+        store_id: authUser.store_id,
+      });
       return;
     }
     try {
@@ -65,9 +75,6 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    await authService.logout();
-    setUser(null);
-    setProfile(null);
     try {
       await authService.logout();
     } finally {
@@ -85,6 +92,7 @@ export function AuthProvider({ children }) {
       user,
       profile,
       companyId: profile?.company_id ?? null,
+      storeId: profile?.store_id ?? null,
       role: profile?.role ?? null,
       isAuthenticated: Boolean(user),
       // true = usuário autenticado mas ainda sem empresa vinculada
@@ -103,6 +111,20 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
+  if (!ctx) {
+    return {
+      user: null,
+      profile: null,
+      companyId: null,
+      storeId: null,
+      role: null,
+      isAuthenticated: false,
+      needsOnboarding: false,
+      loading: false,
+      signIn: async () => {},
+      signOut: async () => {},
+      refreshProfile: async () => {},
+    };
+  }
   return ctx;
 }

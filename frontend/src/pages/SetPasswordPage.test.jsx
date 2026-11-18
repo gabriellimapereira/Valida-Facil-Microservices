@@ -6,10 +6,9 @@ import SetPasswordPage from "./SetPasswordPage";
 import * as authService from "../services/authService";
 
 vi.mock("../services/authService", () => ({
-  getSessionUser: vi.fn(),
+  validateActionToken: vi.fn(),
   updatePassword: vi.fn(),
   logout: vi.fn(),
-  onAuthStateChange: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
 }));
 
 vi.mock("../context/ToastContext", () => ({
@@ -21,11 +20,11 @@ describe("SetPasswordPage", () => {
     vi.clearAllMocks();
   });
 
-  it("mostra erro de convite inválido quando não há sessão de usuário", async () => {
-    authService.getSessionUser.mockResolvedValue(null);
+  it("mostra erro de convite inválido quando o token expirou", async () => {
+    authService.validateActionToken.mockResolvedValue(false);
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/definir-senha?token=invite-token"]}>
         <SetPasswordPage />
       </MemoryRouter>
     );
@@ -35,11 +34,11 @@ describe("SetPasswordPage", () => {
     });
   });
 
-  it("com sessão válida, renderiza 'Defina sua senha' com os campos de senha", async () => {
-    authService.getSessionUser.mockResolvedValue({ id: "user-1", email: "colab@teste.com" });
+  it("com token válido, renderiza 'Defina sua senha' com os campos de senha", async () => {
+    authService.validateActionToken.mockResolvedValue(true);
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/definir-senha?token=invite-token"]}>
         <SetPasswordPage />
       </MemoryRouter>
     );
@@ -53,10 +52,10 @@ describe("SetPasswordPage", () => {
   });
 
   it("bloqueia quando as senhas não coincidem", async () => {
-    authService.getSessionUser.mockResolvedValue({ id: "user-1", email: "colab@teste.com" });
+    authService.validateActionToken.mockResolvedValue(true);
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/definir-senha?token=invite-token"]}>
         <SetPasswordPage />
       </MemoryRouter>
     );
@@ -77,4 +76,3 @@ describe("SetPasswordPage", () => {
     expect(authService.updatePassword).not.toHaveBeenCalled();
   });
 });
-

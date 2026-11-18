@@ -10,22 +10,22 @@
                 }
             ]
         },
-        "backend": {
-            "root": "backend",
-            "entrypoint": "app/main.py"
+        "api-gateway": {
+            "root": ".",
+            "entrypoint": "api-gateway/gateway/main.py"
         }
     },
     "rewrites": [
         {
             "source": "/api/(.*)",
             "destination": {
-                "service": "backend"
+                "service": "api-gateway"
             }
         },
         {
             "source": "/api",
             "destination": {
-                "service": "backend"
+                "service": "api-gateway"
             }
         },
         {
@@ -42,4 +42,3 @@
         }
     ]
 }
-

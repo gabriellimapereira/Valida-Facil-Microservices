@@ -3,8 +3,6 @@ import { createPortal } from "react-dom";
 import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Minus, Plus, X } from "lucide-react";
 import TactileButton from "../ui/TactileButton";
 
-const MAX_AMOUNT = 1_000_000;
-
 const TYPES = [
   { id: "entrada", label: "Entrada", icon: ArrowUpCircle, hint: "Quantidade recebida ou reposta (+)" },
   { id: "saida", label: "Saída", icon: ArrowDownCircle, hint: "Quantidade vendida ou consumida (-)" },
@@ -23,10 +21,8 @@ export default function MovementModal({ product, onClose, onSubmit }) {
 
   const handleIncrement = () => {
     const current = Number(amount) || 0;
-    if (current < MAX_AMOUNT) {
-      setAmount(String(current + 1));
-      setError("");
-    }
+    setAmount(String(current + 1));
+    setError("");
   };
 
   const handleDecrement = () => {
@@ -66,8 +62,7 @@ export default function MovementModal({ product, onClose, onSubmit }) {
     }
 
     val = val.replace(/\D/g, "");
-    let num = Number(val);
-    if (num > MAX_AMOUNT) num = MAX_AMOUNT;
+    const num = Number(val);
     val = val === "" ? "" : `${num}`;
 
     setAmount(val);
@@ -83,18 +78,8 @@ export default function MovementModal({ product, onClose, onSubmit }) {
       return;
     }
 
-    if (value > MAX_AMOUNT) {
-      setError(`A quantidade não pode ultrapassar ${MAX_AMOUNT.toLocaleString("pt-BR")} unidades.`);
-      return;
-    }
-
     if (projectedQuantity < 0) {
       setError(`Quantidade insuficiente em estoque (atual: ${product.quantity}, saída solicitada: ${Math.abs(delta)}).`);
-      return;
-    }
-
-    if (projectedQuantity > MAX_AMOUNT) {
-      setError(`O estoque resultante (${projectedQuantity.toLocaleString("pt-BR")} un.) ultrapassa o limite do sistema.`);
       return;
     }
 
@@ -193,7 +178,6 @@ export default function MovementModal({ product, onClose, onSubmit }) {
               <label htmlFor="movement-amount-input" className="block text-xs font-semibold text-slate-700">
                 Quantidade da operação
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">máx 1.000.000</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -219,7 +203,6 @@ export default function MovementModal({ product, onClose, onSubmit }) {
               <button
                 type="button"
                 onClick={handleIncrement}
-                disabled={numAmount >= MAX_AMOUNT}
                 aria-label="Aumentar quantidade"
                 title="Aumentar (ou tecla ↑)"
                 className="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer active:scale-95 shadow-2xs select-none shrink-0"

@@ -1,155 +1,72 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// productService.js só chama supabase.from(...) quando isSupabaseConfigured
-// é true — mockamos os dois como "configurado", já que o modo mock (sem
-// Supabase) é só um array em memória, sem lógica de mapeamento pra testar.
-const mockFrom = vi.fn();
-vi.mock("../lib/supabaseClient", () => ({
-  isSupabaseConfigured: true,
-  supabase: { from: (...args) => mockFrom(...args) },
+const mockApiGet = vi.fn();
+const mockApiPost = vi.fn();
+const mockApiPatch = vi.fn();
+const mockApiDelete = vi.fn();
+
+vi.mock("../lib/apiClient", () => ({
+  getAccessToken: () => "test-token",
+  apiClient: {
+    get: (...args) => mockApiGet(...args),
+    post: (...args) => mockApiPost(...args),
+    patch: (...args) => mockApiPatch(...args),
+    delete: (...args) => mockApiDelete(...args),
+  },
 }));
 
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from "./productService";
 
-// Builder "encadeável e thenable": cada método devolve o próprio objeto
-// (pra suportar .select().eq().order() em qualquer ordem), e `await` em
-// qualquer ponto da cadeia resolve pro mesmo resultado configurado no
-// teste — suficiente pra testar COMO o service usa a resposta, sem
-// precisar reimplementar o Postgres de verdade.
-function makeChain(result) {
-  const chain = {};
-  ["select", "eq", "order", "insert", "update", "delete", "single", "maybeSingle"].forEach((method) => {
-    chain[method] = vi.fn(() => chain);
-  });
-  chain.then = (resolve) => resolve(result);
-  return chain;
-}
-
 beforeEach(() => {
-  mockFrom.mockReset();
+  mockApiGet.mockReset();
+  mockApiPost.mockReset();
+  mockApiPatch.mockReset();
+  mockApiDelete.mockReset();
 });
 
-describe("fetchProducts", () => {
-  it("busca na tabela certa e mapeia min_stock -> minStock", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: [
-          {
-            id: "1",
-            code: "FRT-0012",
-            name: "Maçã Gala",
-            category: "perecivel",
-            price: "42.90",
-            quantity: 5,
-            min_stock: 10,
-            expiry: "2026-08-25",
-            supplier: "Fazenda Boa Vista",
-          },
-        ],
-        error: null,
-      })
-    );
+describe("productService via API Gateway", () => {
+  it("normalizes the list returned by MS Warehouse", async () => {
+    mockApiGet.mockResolvedValue([
+      { id: "p1", name: "Maçã", price: "4.5", quantity: 5, min_stock: 2 },
+    ]);
 
-    const result = await fetchProducts("company-1");
-
-    expect(mockFrom).toHaveBeenCalledWith("products");
-    expect(result).toEqual([
+    await expect(fetchProducts("company-1")).resolves.toEqual([
       {
-        id: "1",
-        code: "FRT-0012",
-        name: "Maçã Gala",
-        category: "perecivel",
-        price: 42.9, // string do Postgres vira number
+        id: "p1",
+        code: undefined,
+        name: "Maçã",
+        category: undefined,
+        price: 4.5,
         quantity: 5,
-        minStock: 10,
-        expiry: "2026-08-25",
-        supplier: "Fazenda Boa Vista",
+        minStock: 2,
+        expiry: undefined,
+        supplier: undefined,
       },
     ]);
+    expect(mockApiGet).toHaveBeenCalledWith("/products");
   });
 
-  it("não faz consulta nenhuma sem companyId (evita vazar dado sem escopo)", async () => {
-    const result = await fetchProducts(null);
-
-    expect(result).toEqual([]);
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
-  it("propaga o erro do Supabase (ex: bloqueio de RLS)", async () => {
-    mockFrom.mockReturnValue(makeChain({ data: null, error: new Error("RLS negou o acesso") }));
-
-    await expect(fetchProducts("company-1")).rejects.toThrow("RLS negou o acesso");
-  });
-});
-
-describe("createProduct", () => {
-  it("converte minStock -> min_stock e companyId -> company_id no payload enviado", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: {
-          id: "novo-1",
-          code: "MOD-1001",
-          name: "Camiseta Básica",
-          category: "moda",
-          price: 39.9,
-          quantity: 10,
-          min_stock: 5,
-          expiry: null,
-          supplier: null,
-        },
-        error: null,
-      })
-    );
-
-    const result = await createProduct({
-      code: "MOD-1001",
-      name: "Camiseta Básica",
-      category: "moda",
+  it("sends creates and updates through the Gateway", async () => {
+    mockApiPost.mockResolvedValue({ id: "p1", name: "Camiseta", min_stock: 5, price: 39.9 });
+    const created = await createProduct({ name: "Camiseta", minStock: 5, price: 39.9 });
+    expect(mockApiPost).toHaveBeenCalledWith("/products", {
+      name: "Camiseta",
+      min_stock: 5,
       price: 39.9,
-      quantity: 10,
-      minStock: 5,
-      companyId: "company-1",
     });
+    expect(created.minStock).toBe(5);
 
-    expect(result.id).toBe("novo-1");
-    expect(result.minStock).toBe(5);
+    mockApiPatch.mockResolvedValue({ id: "p1", quantity: 3, min_stock: 5 });
+    await expect(updateProduct("p1", { quantity: 3 })).resolves.toMatchObject({ quantity: 3 });
+    expect(mockApiPatch).toHaveBeenCalledWith("/products/p1", { quantity: 3 });
   });
 
-  it("propaga erro quando a inserção falha (ex: código de produto duplicado)", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({ data: null, error: new Error('duplicate key value violates unique constraint') })
-    );
+  it("deletes through the Gateway and propagates errors", async () => {
+    mockApiDelete.mockResolvedValue(null);
+    await expect(deleteProduct("p1")).resolves.toBe(true);
+    expect(mockApiDelete).toHaveBeenCalledWith("/products/p1");
 
-    await expect(createProduct({ code: "X", companyId: "company-1" })).rejects.toThrow(/duplicate key/);
-  });
-});
-
-describe("updateProduct", () => {
-  it("mapeia só os campos alterados", async () => {
-    mockFrom.mockReturnValue(
-      makeChain({
-        data: { id: "1", code: "X", name: "Y", category: "moda", price: 10, quantity: 3, min_stock: 5, expiry: null, supplier: null },
-        error: null,
-      })
-    );
-
-    const result = await updateProduct("1", { quantity: 3 });
-
-    expect(result.quantity).toBe(3);
-    expect(mockFrom).toHaveBeenCalledWith("products");
-  });
-});
-
-describe("deleteProduct", () => {
-  it("retorna true quando a exclusão funciona", async () => {
-    mockFrom.mockReturnValue(makeChain({ error: null }));
-
-    await expect(deleteProduct("1")).resolves.toBe(true);
-  });
-
-  it("propaga erro quando a exclusão falha", async () => {
-    mockFrom.mockReturnValue(makeChain({ error: new Error("permissão negada") }));
-
-    await expect(deleteProduct("1")).rejects.toThrow("permissão negada");
+    mockApiDelete.mockRejectedValue(new Error("permission denied"));
+    await expect(deleteProduct("p1")).rejects.toThrow("permission denied");
   });
 });

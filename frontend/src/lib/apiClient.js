@@ -1,31 +1,17 @@
-// Cliente HTTP para o backend (FastAPI). Diferente do supabaseClient (que
-// fala direto com o Postgres via RLS), aqui sempre mandamos o JWT da
-// sessão atual no header Authorization — o backend usa esse mesmo token
-// pra criar um client Supabase "amarrado" ao usuário, então o RLS
-// continua valendo mesmo passando pelo backend (ver core/security.py lá).
-
-import { supabase, isSupabaseConfigured } from "./supabaseClient";
+// Cliente HTTP do Gateway. Tokens de sessão são JWTs emitidos pelo MS Identity.
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.PROD ? "/api" : "http://localhost:8000");
 
-async function getAccessToken() {
-  if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  return data?.session?.access_token ?? null;
+export function getAccessToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("valida_facil_token");
 }
 
-async function request(path, { method = "GET", body, params } = {}) {
-  if (!isSupabaseConfigured) {
-    throw new Error(
-      "Essa ação depende do backend + Supabase configurados. Preencha o .env e tente novamente."
-    );
-  }
-
-  const token = await getAccessToken();
-  if (!token) {
+async function request(path, { method = "GET", body, params, authenticated = true } = {}) {
+  const token = authenticated ? getAccessToken() : null;
+  if (authenticated && !token) {
     throw new Error("Sessão expirada. Faça login novamente para continuar.");
   }
 
@@ -42,15 +28,19 @@ async function request(path, { method = "GET", body, params } = {}) {
     });
   }
 
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
   let response;
   try {
     response = await fetch(url.toString(), {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers,
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
     });
   } catch (networkError) {
     throw new Error(
@@ -83,7 +73,10 @@ async function request(path, { method = "GET", body, params } = {}) {
 
 export const apiClient = {
   get: (path, params) => request(path, { method: "GET", params }),
+  getPublic: (path, params) => request(path, { method: "GET", params, authenticated: false }),
   post: (path, body, params) => request(path, { method: "POST", body, params }),
+  postPublic: (path, body, params) => request(path, { method: "POST", body, params, authenticated: false }),
+  postFormData: (path, formData, params) => request(path, { method: "POST", body: formData, params }),
   patch: (path, body, params) => request(path, { method: "PATCH", body, params }),
   delete: (path, params) => request(path, { method: "DELETE", params }),
 };

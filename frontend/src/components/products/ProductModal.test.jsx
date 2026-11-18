@@ -50,26 +50,24 @@ describe("ProductModal", () => {
     });
   });
 
-  it("impõe o limite máximo de 1.000.000 no valor do produto", async () => {
+  it("permite informar valor do produto acima de 1.000.000 sem limite artificial", async () => {
     const onSave = vi.fn();
     render(<ProductModal product={null} onClose={vi.fn()} onSave={onSave} />);
 
     const priceInput = screen.getByPlaceholderText("0,00");
     fireEvent.change(priceInput, { target: { value: "2000000" } });
 
-    // O componente automaticamente corta para 1000000
-    expect(priceInput.value).toBe("1000000");
+    expect(priceInput.value).toBe("2000000");
   });
 
-  it("impõe o limite máximo de 1.000.000 na quantidade de produtos", async () => {
+  it("permite informar quantidade de produtos acima de 1.000.000 sem limite artificial", async () => {
     render(<ProductModal product={null} onClose={vi.fn()} onSave={vi.fn()} />);
 
     const zeroInputs = screen.getAllByPlaceholderText("0");
     const qtyInput = zeroInputs[0];
     fireEvent.change(qtyInput, { target: { value: "5000000" } });
 
-    // O componente corta para 1000000
-    expect(qtyInput.value).toBe("1000000");
+    expect(qtyInput.value).toBe("5000000");
   });
 
   it("no modo de edição, desabilita a edição direta do campo quantidade", () => {
