@@ -72,3 +72,6 @@ npm test --prefix frontend -- --run
 Para especificações detalhadas de contratos REST, arquitetura de microsserviços, schemas de banco e fluxos Saga, consulte:
 - [DOCUMENTACAO.md](./DOCUMENTACAO.md)
 - [DOCUMENTACAO_MICROSSERVICOS.md](./DOCUMENTACAO_MICROSSERVICOS.md)
+
+## Link da Apresentação
+- https://drive.google.com/file/d/1bSDIh3fCcV_ohGQrC2NhTiZl83jUGcsC/view?usp=sharing
