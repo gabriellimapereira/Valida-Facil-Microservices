@@ -72,14 +72,12 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
     }
   };
 
-  // Previne digitação de caracteres não numéricos em campos inteiros
   const handleIntegerKeyDown = (e) => {
     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
       e.preventDefault();
     }
   };
 
-  // Previne 'e', 'E', '+' em campo de preço decimal
   const handlePriceKeyDown = (e) => {
     if (["e", "E", "+", "-"].includes(e.key)) {
       e.preventDefault();
@@ -92,7 +90,6 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
       set("price", "");
       return;
     }
-    // Remove qualquer caractere inválido
     val = val.replace(/[^0-9.,]/g, "").replace(",", ".");
     const num = Number(val);
     if (!isNaN(num)) {
@@ -106,7 +103,6 @@ export default function ProductModal({ product, onClose, onSave, existingProduct
       set(field, "");
       return;
     }
-    // Apenas dígitos
     val = val.replace(/\D/g, "");
     const num = Number(val);
     if (!isNaN(num)) {

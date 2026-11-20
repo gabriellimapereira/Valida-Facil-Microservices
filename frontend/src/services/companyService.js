@@ -3,9 +3,6 @@ import { MOCK_COMPANY, MOCK_MEMBERS } from "../data/mockData";
 
 let memoryCompany = { ...MOCK_COMPANY };
 
-// O banco usa snake_case (notification_email, logo_url), o front usa camelCase
-// (notificationEmail, logoUrl) — isso mantém a "tradução" isolada aqui, então
-// nenhum componente precisa saber como a coluna se chama no Postgres.
 function fromDb(row) {
   if (!row) return null;
   return {
@@ -51,9 +48,6 @@ export async function fetchCompany(companyId) {
   return fromDb(await apiClient.get("/companies/me"));
 }
 
-// Criar empresa precisa da chave service_role (o usuário ainda não tem
-// company_id, então o RLS bloquearia legitimamente a escrita) — por isso
-// essa chamada específica passa pelo backend, não acessa o banco diretamente.
 export async function createCompany(fields) {
   const payload = toDb(fields);
   const data = await apiClient.post("/companies", payload);

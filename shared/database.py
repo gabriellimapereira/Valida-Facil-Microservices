@@ -186,9 +186,9 @@ class DatabaseClient:
             return False
 
     def _format_columns_select(self, columns: str) -> str:
+        """Formata projeção de colunas para SQL mantendo identificadores seguros."""
         if not columns or columns == "*":
             return "*"
-        # Formata nomes de colunas mantendo expressões seguras
         parts = [p.strip() for p in columns.split(",") if p.strip()]
         formatted = []
         for p in parts:
@@ -354,9 +354,9 @@ class DatabaseClient:
                 return None
 
     def _execute_rpc(self, fn_name: str, params: Dict[str, Any]) -> DbResult:
+        """Executa função SQL armazenada (stored procedure / RPC) com parâmetros nomeados."""
         with self.get_connection() as conn:
             with conn.cursor() as cur:
-                # Chama a função SQL nomeada
                 arg_names = list(params.keys())
                 placeholders = []
                 values = []

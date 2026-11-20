@@ -2,9 +2,6 @@ import React from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { isValidCnpj } from "../../utils/formatters";
 
-// Feedback em tempo real conforme digita o CNPJ — só aparece depois que a
-// pessoa já digitou os 14 dígitos, pra não mostrar "inválido" no meio da
-// digitação (o que seria falso alarme).
 export default function CnpjValidityHint({ value }) {
   const digitCount = (value || "").replace(/\D/g, "").length;
   if (digitCount === 0 || digitCount < 14) return null;

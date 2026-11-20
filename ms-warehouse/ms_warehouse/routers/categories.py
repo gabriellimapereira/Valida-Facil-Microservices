@@ -20,14 +20,13 @@ class CategoryOut(BaseModel):
 
 @router.get("", response_model=List[CategoryOut])
 async def list_categories():
-    """Retorna as categorias padrão do catálogo."""
+    """Retorna as categorias padrão do catálogo com fallback para as canônicas."""
     db = get_db("warehouse")
     try:
         resp = db.table("categories").select("id, label, has_expiry").execute()
         rows = resp.data if resp and resp.data else []
         return [CategoryOut(**r) for r in rows]
     except Exception:
-        # Fallback seguro com as 5 categorias canônicas
         return [
             CategoryOut(id="perecivel", label="Perecível (Alimentos)", has_expiry=True),
             CategoryOut(id="moda", label="Vestuário & Moda", has_expiry=False),

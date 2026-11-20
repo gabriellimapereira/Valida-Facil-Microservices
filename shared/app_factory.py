@@ -191,7 +191,6 @@ def create_service_app(
 
             checks: dict[str, str] = {}
 
-            # 1. Checagem do Banco de Dados dedicado
             try:
                 db = get_db(service_name)
                 if hasattr(db, "check_health"):
@@ -202,7 +201,6 @@ def create_service_app(
             except Exception as exc:
                 checks["database"] = f"error: {str(exc)}"
 
-            # 2. Checagem do Broker (RabbitMQ ou Outbox)
             try:
                 broker_ok = await broker.check_health()
                 checks["broker"] = "ok" if broker_ok else "unhealthy"

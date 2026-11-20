@@ -40,7 +40,6 @@ export default function StockPage() {
   const [movingProduct, setMovingProduct] = useState(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // Abre o modal de cadastro automaticamente ao chegar via /estoque?novo=1 (exceto se for operador de filial)
   useEffect(() => {
     if (searchParams.get("novo") === "1") {
       if (!isBranchOperator) {
@@ -53,7 +52,6 @@ export default function StockPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBranchOperator]);
 
-  // Sincroniza sortPrice de filters com sortField
   useEffect(() => {
     if (filters.sortPrice !== "none") {
       setSortField("price");
@@ -164,9 +162,6 @@ export default function StockPage() {
     }
   };
 
-  // Passa pelo backend (POST /movements): atualiza a quantidade + grava o
-  // histórico numa transação só, e decide lá se dispara e-mail de estoque
-  // baixo — por isso não editamos products.quantity diretamente no frontend.
   const handleMovementSubmit = async ({ movementType, quantityDelta, note }) => {
     if (isBranchOperator) {
       addToast("Operadores de filial não podem lançar movimentações no armazém central.", "error");

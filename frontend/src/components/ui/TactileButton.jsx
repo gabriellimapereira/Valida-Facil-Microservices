@@ -165,7 +165,6 @@ export default function TactileButton(props) {
   };
   const radiusPx = getRadius();
 
-  // Escuta pointerup na janela para soltar o botão caso o cursor saia pressionado
   useEffect(() => {
     const release = () => setIsPressed(false);
     window.addEventListener("pointerup", release);
@@ -176,7 +175,6 @@ export default function TactileButton(props) {
     };
   }, []);
 
-  // Icon parsing
   const iconSymbol = icon.symbol || "→";
   const iconSrc = typeof icon.image === "string" ? icon.image : icon.image?.src || "";
   const isImageIcon = icon.type === "image" && iconSrc;

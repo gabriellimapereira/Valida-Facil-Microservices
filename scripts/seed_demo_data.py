@@ -13,7 +13,6 @@ import psycopg
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# URLs padrão dos bancos (portas expostas pelo docker-compose)
 IDENTITY_DB_URL = os.getenv(
     "IDENTITY_DATABASE_URL",
     "postgresql://valida_identity:local_identity_password@127.0.0.1:5435/valida_identity",

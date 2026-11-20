@@ -1,6 +1,3 @@
-// Dados de demonstração usados enquanto não há uma sessão autenticada
-// (ver src/services/productService.js e src/services/companyService.js).
-
 function addDays(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);

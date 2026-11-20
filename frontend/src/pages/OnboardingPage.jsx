@@ -31,7 +31,6 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Quem já tem empresa não deveria estar aqui (evita recadastro acidental).
   if (!needsOnboarding) {
     return <Navigate to="/dashboard" replace />;
   }

@@ -1,8 +1,3 @@
-// Camada de acesso a dados de produtos. Faz a "tradução" entre o formato
-// do banco (snake_case: min_stock, company_id) e o formato usado no resto
-// do front (camelCase: minStock) — assim nenhum componente precisa saber
-// como a coluna se chama no Postgres.
-
 import { apiClient, getAccessToken } from "../lib/apiClient";
 import { MOCK_PRODUCTS } from "../data/mockData";
 

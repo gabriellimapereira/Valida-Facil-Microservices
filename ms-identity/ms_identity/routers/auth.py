@@ -99,7 +99,6 @@ async def login(payload: LoginRequest):
     """Autentica o usuário com email e senha e retorna um token JWT assinado."""
     db = get_db("identity")
 
-    # 1. Busca usuário na tabela users
     resp = (
         db.table("users")
         .select("*")
@@ -131,7 +130,6 @@ async def login(payload: LoginRequest):
 
     user_id = str(user_row["id"])
 
-    # 2. Busca perfil associado
     prof_resp = (
         db.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
     )
@@ -289,7 +287,6 @@ async def register(payload: RegisterRequest):
     db = get_db("identity")
     email = payload.email.lower().strip()
 
-    # Verifica duplicidade de email
     existing = (
         db.table("users").select("id").eq("email", email).maybe_single().execute()
     )
@@ -316,7 +313,6 @@ async def register(payload: RegisterRequest):
     company_id = None
     role = "operador"
 
-    # Se informou empresa, cria o tenant e atribui perfil de admin
     if payload.company_name and payload.cnpj:
         company_id = str(uuid.uuid4())
         initials = (

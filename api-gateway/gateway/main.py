@@ -39,11 +39,11 @@ from shared.http_client import (
 
 logger = logging.getLogger("valida_facil.gateway")
 
-# Carrega apps ASGI locais sempre que algum destino estiver em modo asgi://
 _LOADED_ASGI = False
 
 
 def _ensure_local_service_paths() -> None:
+    """Configura caminhos locais no sys.path para carregamento in-process."""
     repo_root = Path(__file__).resolve().parent.parent.parent
     for rel in ("", "api-gateway", "ms-identity", "ms-warehouse", "ms-stores"):
         candidate = str(repo_root / rel) if rel else str(repo_root)
@@ -52,6 +52,7 @@ def _ensure_local_service_paths() -> None:
 
 
 def _ensure_asgi_microservices_loaded() -> None:
+    """Carrega apps ASGI locais sempre que algum destino estiver em modo asgi://."""
     global _LOADED_ASGI
     if _LOADED_ASGI:
         return

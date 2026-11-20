@@ -21,10 +21,8 @@ from shared.security import AuthedUser
 from tests.conftest import FakeQuery
 
 
-# ---------------------------------------------------------------------
-# Achado 1: Segredo interno em produção
-# ---------------------------------------------------------------------
 def test_settings_rejeita_segredo_padrao_ou_vazio_em_producao():
+    """Valida que o settings rejeita o segredo padrão ou vazio em produção."""
     with pytest.raises(ValidationError):
         Settings(
             environment="production",
@@ -70,9 +68,6 @@ def test_require_internal_service_bloqueia_segredo_padrao_em_producao(monkeypatc
     assert exc_info.value.status_code == 500
 
 
-# ---------------------------------------------------------------------
-# Achado 2: Falha da RPC de recebimento não deve usar fallback em produção
-# ---------------------------------------------------------------------
 class _RealLikeClientRpcTimeout:
     """Simula cliente PostgreSQL cuja RPC falha após commit/timeout."""
 
@@ -164,13 +159,11 @@ def test_falha_rpc_recebimento_propaga_erro_sem_duplicar_credito_em_cliente_real
     assert real_like.tables["store_inventory"] == []
 
 
-# ---------------------------------------------------------------------
-# Achado 3: Recebimentos concorrentes não duplicam crédito
-# ---------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_recebimentos_concorrentes_creditam_estoque_apenas_uma_vez(
     fake_client, make_authed_user
 ):
+    """Garante que recebimentos concorrentes não duplicam crédito no estoque da filial."""
     from shared import security
 
     company_id = str(uuid4())
@@ -237,12 +230,10 @@ async def test_recebimentos_concorrentes_creditam_estoque_apenas_uma_vez(
     assert len(fake_client.tables["store_movements"]) == 1
 
 
-# ---------------------------------------------------------------------
-# Achado 4: Idempotência de despacho e estorno entre MS Stores e MS Warehouse
-# ---------------------------------------------------------------------
 def test_despacho_idempotente_apos_falha_local_no_ms_stores(
     make_test_client, fake_client, make_authed_user
 ):
+    """Testa idempotência de despacho e estorno entre MS Stores e MS Warehouse."""
     from shared import security
 
     company_id = str(uuid4())
@@ -397,12 +388,10 @@ async def test_despachos_concorrentes_no_ms_warehouse_deduzem_apenas_uma_vez(
     assert any(res.json().get("idempotent") is True for res in (r1, r2))
 
 
-# ---------------------------------------------------------------------
-# Achado 5: Estoque mínimo da filial rejeita produto de outra empresa
-# ---------------------------------------------------------------------
 def test_update_store_min_stock_rejeita_produto_de_outra_empresa(
     make_test_client, fake_client, make_authed_user
 ):
+    """Garante que a atualização de estoque mínimo na filial rejeita produto de outro tenant."""
     company_a = str(uuid4())
     company_b = str(uuid4())
     store_a = str(uuid4())

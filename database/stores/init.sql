@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS requisitions (
     store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovada', 'rejeitada', 'despachada', 'recebida', 'cancelada')),
     notes TEXT,
+    requested_by UUID,
     created_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -246,3 +247,6 @@ BEGIN
     );
 END;
 $$;
+
+ALTER TABLE requisitions ADD COLUMN IF NOT EXISTS requested_by UUID;
+UPDATE requisitions SET requested_by = created_by WHERE requested_by IS NULL AND created_by IS NOT NULL;

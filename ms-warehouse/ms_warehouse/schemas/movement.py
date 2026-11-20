@@ -5,12 +5,13 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class MovementCreate(BaseModel):
+    """Payload de criação de movimentação no estoque central."""
+
     product_id: UUID
     movement_type: Literal["entrada", "saida", "ajuste"]
-    # Positivo para entrada, negativo para saída. Em ajustes, pode ser
-    # positivo ou negativo dependendo da correção necessária (sem teto artificial).
     quantity_delta: int = Field(
-        ..., description="Variação de quantidade aplicada ao estoque"
+        ...,
+        description="Variação de quantidade aplicada (positivo para entrada, negativo para saída, livre em ajustes)",
     )
     note: Optional[str] = Field(default=None, max_length=280)
 

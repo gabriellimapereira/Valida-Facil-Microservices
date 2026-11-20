@@ -21,6 +21,7 @@ logger = logging.getLogger("valida_facil.stock")
 
 
 def apply_movement(client: DatabaseClient, payload: MovementCreate) -> MovementResult:
+    """Aplica movimentação atômica via RPC PostgreSQL no Armazém Central."""
     response = client.rpc(
         "apply_stock_movement",
         {
@@ -32,7 +33,6 @@ def apply_movement(client: DatabaseClient, payload: MovementCreate) -> MovementR
     ).execute()
 
     data = response.data
-    # O banco pode retornar a RPC como lista ou objeto único — normalizamos ambos.
     if isinstance(data, list):
         data = data[0] if data else {}
 
@@ -43,6 +43,7 @@ def apply_movement(client: DatabaseClient, payload: MovementCreate) -> MovementR
 
 
 def notify_low_stock_if_needed(result: MovementResult, company_name: str) -> None:
+    """Dispara alerta por e-mail quando o estoque atinge ou fica abaixo do nível mínimo."""
     if not result.crossed_low_stock or not result.notification_email:
         return
 

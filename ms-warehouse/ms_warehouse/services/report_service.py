@@ -38,18 +38,15 @@ def _fmt_date(iso: str | None) -> str:
 
 
 def _fmt_datetime(iso: str | None) -> str:
+    """Formata timestamp ISO para padrão legível DD/MM/AAAA HH:MM."""
     if not iso:
         return "—"
     dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     return dt.strftime("%d/%m/%Y %H:%M")
 
 
-# --------------------------------------------------------------------- #
-# Coleta de dados (PostgreSQL)                                          #
-# --------------------------------------------------------------------- #
-
-
 def _fetch_products(client: DatabaseClient) -> list[dict]:
+    """Recupera produtos cadastrados para composição do relatório."""
     return (
         client.table("products")
         .select("name, code, category, quantity, min_stock, price, expiry")
@@ -63,6 +60,7 @@ def _fetch_products(client: DatabaseClient) -> list[dict]:
 def _fetch_movements(
     client: DatabaseClient, date_from: date | None, date_to: date | None
 ) -> list[dict]:
+    """Recupera movimentações de estoque no intervalo especificado."""
     query = (
         client.table("stock_movements")
         .select(
@@ -75,11 +73,6 @@ def _fetch_movements(
     if date_to:
         query = query.lte("created_at", (date_to + timedelta(days=1)).isoformat())
     return query.execute().data or []
-
-
-# --------------------------------------------------------------------- #
-# Construção de cada tipo de relatório                                  #
-# --------------------------------------------------------------------- #
 
 
 def _build_stock_snapshot(
@@ -360,16 +353,12 @@ BUILDERS = {
 }
 
 
-# --------------------------------------------------------------------- #
-# Ponto de entrada                                                       #
-# --------------------------------------------------------------------- #
-
-
 def generate_report(
     client: DatabaseClient,
     company: str | dict[str, Any],
     request: ReportRequest,
 ) -> tuple[bytes, str, str]:
+    """Gera o arquivo de relatório em PDF ou XLSX com dados do Armazém Central."""
     if isinstance(company, dict):
         company_name = company.get("name") or "Empresa"
         company_data = company

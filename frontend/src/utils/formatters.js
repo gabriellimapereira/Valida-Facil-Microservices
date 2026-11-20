@@ -44,8 +44,6 @@ export function expiryUrgency(iso) {
 
 export const isLowStock = (p) => Boolean(p && typeof p.quantity === "number" && typeof p.minStock === "number" && p.quantity <= p.minStock);
 
-// Aplica a máscara 00.000.000/0000-00 progressivamente enquanto digita, e
-// SEMPRE corta em 14 dígitos — não tem como digitar CNPJ maior que isso.
 export function formatCnpj(value) {
   const digits = (value || "").replace(/\D/g, "").slice(0, 14);
   const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 8), digits.slice(8, 12), digits.slice(12, 14)];
@@ -57,13 +55,10 @@ export function formatCnpj(value) {
   return result;
 }
 
-// Valida o CNPJ de verdade (dígitos verificadores, módulo 11) — não só a
-// quantidade de dígitos. Impede cadastrar um CNPJ que tem 14 dígitos mas
-// é matematicamente inválido (ex: inventado ou digitado errado).
 export function isValidCnpj(value) {
   const digits = (value || "").replace(/\D/g, "");
   if (digits.length !== 14) return false;
-  if (/^(\d)\1{13}$/.test(digits)) return false; // todos os dígitos iguais nunca é válido
+  if (/^(\d)\1{13}$/.test(digits)) return false;
 
   const calcCheckDigit = (base) => {
     const weights = base.length === 12
@@ -81,9 +76,6 @@ export function isValidCnpj(value) {
   return digits === base + String(digit1) + String(digit2);
 }
 
-// Máscara progressiva de telefone brasileiro — reconhece sozinho se é fixo
-// (10 dígitos, "(00) 0000-0000") ou celular (11 dígitos, "(00) 00000-0000")
-// conforme a quantidade digitada, e corta em 11 dígitos no máximo.
 export function formatPhone(value) {
   const digits = (value || "").replace(/\D/g, "").slice(0, 11);
   if (digits.length === 0) return "";

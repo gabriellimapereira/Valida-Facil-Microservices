@@ -1,7 +1,5 @@
 import { apiClient, getAccessToken } from "../lib/apiClient";
 
-// Perfil "de demonstração" — usado só sem sessão autenticada, para manter
-// o app navegável sem banco nenhum.
 const DEMO_PROFILE = {
   company_id: "company-demo-1",
   role: "admin",

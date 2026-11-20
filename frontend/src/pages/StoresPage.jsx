@@ -358,9 +358,6 @@ export default function StoresPage() {
                 <PackageCheck size={18} className="text-teal-600" />
                 Estoque Local — {selectedStore.name} ({selectedStore.code})
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Saldo físico nas gôndolas, validade FEFO e histórico de entradas e saídas
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">

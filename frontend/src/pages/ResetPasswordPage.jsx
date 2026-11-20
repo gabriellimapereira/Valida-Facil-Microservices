@@ -62,11 +62,6 @@ export default function ResetPasswordPage() {
     try {
       await authService.updatePassword(token, password, "password_reset");
       setDone(true);
-      // Desloga de propósito: força um login explícito com a senha nova,
-      // em vez de deixar a sessão de recuperação "virar" uma sessão normal
-      // silenciosamente.
-      // "global": revoga a sessão em qualquer outra aba/dispositivo que
-      // ainda esteja logado com a senha antiga — não só esta aba aqui.
       await authService.logout();
       addToast("Senha alterada com sucesso! Faça login com a nova senha.");
       setTimeout(() => navigate("/login", { replace: true }), 1500);

@@ -10,19 +10,19 @@ DEV_INTERNAL_SERVICE_SECRET = "valida-facil-internal-dev-secret"
 
 
 class Settings(BaseSettings):
+    """Configurações globais e por microsserviço da plataforma Valida Fácil."""
+
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
-    # Cada microsserviço usa somente a sua própria instância PostgreSQL.
     database_url: str = ""
     identity_database_url: str = ""
     warehouse_database_url: str = ""
     stores_database_url: str = ""
 
-    # Autenticação nativa JWT
     jwt_secret: str = "valida-facil-secret-jwt-key-2026"
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 1440
@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     cron_secret: str = ""
     cors_origins: str = ""
 
-    # Configuração distribuída dos microsserviços e API Gateway
     service_name: str = "gateway"
     identity_service_url: str = "asgi://identity"
     warehouse_service_url: str = "asgi://warehouse"

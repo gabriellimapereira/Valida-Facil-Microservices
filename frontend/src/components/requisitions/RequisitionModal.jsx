@@ -172,7 +172,7 @@ export default function RequisitionModal({
             <div>
               <h3 className="font-bold text-slate-900 text-lg tracking-tight leading-tight">Nova Requisição</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Catálogo do Armazém Central ordenado por FEFO (menor validade primeiro)
+                Catálogo de produtos do Armazém Central
               </p>
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function RequisitionModal({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-700">Produtos Solicitados (FEFO) *</label>
+              <label className="text-xs font-semibold text-slate-700">Produtos Solicitados *</label>
               <button
                 type="button"
                 disabled={!nextAvailableProduct}

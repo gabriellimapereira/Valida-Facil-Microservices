@@ -1,7 +1,3 @@
-// Movimentação de estoque passa pelo backend, que atualiza o banco do serviço.
-// porque precisa ser atômica (atualizar quantidade + gravar histórico
-// juntos) e decidir, no servidor, se dispara o e-mail de estoque baixo.
-
 import { apiClient } from "../lib/apiClient";
 
 export async function recordMovement({ productId, movementType, quantityDelta, note }) {

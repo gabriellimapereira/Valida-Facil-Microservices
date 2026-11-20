@@ -126,8 +126,9 @@ async def _enrich_requisitions(
 
     for row in raw_rows:
         rid = str(row["id"])
-        if row.get("requested_by"):
-            all_user_ids.add(str(row["requested_by"]))
+        user_id_ref = row.get("requested_by") or row.get("created_by")
+        if user_id_ref:
+            all_user_ids.add(str(user_id_ref))
 
         items = row.get("requisition_items")
         if items is None:
@@ -149,7 +150,8 @@ async def _enrich_requisitions(
     for row in raw_rows:
         rid = str(row["id"])
         sid = str(row["store_id"])
-        uid = str(row["requested_by"]) if row.get("requested_by") else None
+        user_id_ref = row.get("requested_by") or row.get("created_by")
+        uid = str(user_id_ref) if user_id_ref else None
 
         embedded_store = (
             row.get("stores") if isinstance(row.get("stores"), dict) else {}
@@ -201,6 +203,7 @@ async def _enrich_requisitions(
 
 
 def _is_fake_without_rpc(client: Any, rpc_name: str) -> bool:
+    """Determina se o cliente é um stub em memória sem a RPC registrada."""
     return hasattr(client, "rpc_results") and rpc_name not in client.rpc_results
 
 
@@ -240,7 +243,6 @@ def _credit_store_inventory_on_receipt(
                 detail="Não foi possível confirmar o recebimento na filial. Verifique o status da requisição antes de tentar novamente.",
             ) from exc
 
-    # Caminho exclusivo para o cliente fake em testes sem stub da RPC configurado
     now_iso = datetime.now(timezone.utc).isoformat()
     with _FAKE_RECEIPT_LOCK:
         req_check = (
@@ -357,7 +359,6 @@ async def create_requisition(
             detail="Colaborador só pode emitir requisições para a própria filial vinculada.",
         )
 
-    # Evita falha 500 por constraint unique (requisition_id, product_id)
     seen_products: set[str] = set()
     product_ids: List[str] = []
     for item in payload.items:
@@ -383,7 +384,6 @@ async def create_requisition(
             status_code=404, detail="Filial de destino não encontrada nesta empresa."
         )
 
-    # Valida no MS Warehouse via HTTP se todos os produtos pertencem à empresa
     products_map = await _fetch_warehouse_products(
         str(user.company_id), product_ids, user.access_token
     )
@@ -401,7 +401,16 @@ async def create_requisition(
         "status": "pendente",
         "notes": payload.notes.strip() if payload.notes else None,
     }
-    req_resp = user.client.table("requisitions").insert(req_insert).execute()
+    try:
+        req_resp = user.client.table("requisitions").insert(req_insert).execute()
+    except Exception as exc:
+        if "requested_by" in str(exc):
+            fallback_insert = dict(req_insert)
+            fallback_insert.pop("requested_by", None)
+            fallback_insert["created_by"] = user.id
+            req_resp = user.client.table("requisitions").insert(fallback_insert).execute()
+        else:
+            raise
     if not req_resp.data:
         raise HTTPException(status_code=400, detail="Falha ao criar a requisição.")
     new_req = req_resp.data[0]
@@ -449,7 +458,7 @@ async def create_requisition(
         "company_id": new_req["company_id"],
         "store_id": new_req["store_id"],
         "store_name": store_resp.data.get("name"),
-        "requested_by": new_req.get("requested_by"),
+        "requested_by": new_req.get("requested_by") or new_req.get("created_by"),
         "requested_by_name": user.full_name or user.email,
         "status": new_req["status"],
         "notes": new_req.get("notes"),
@@ -509,6 +518,7 @@ async def update_requisition_status(
     payload: RequisitionStatusUpdate,
     user: AuthedUser = Depends(get_current_user_with_company),
 ):
+    """Atualiza o ciclo de vida da requisição (pendente -> aprovada -> despachada -> recebida | cancelada) executando orquestração Saga."""
     req_resp = (
         user.client.table("requisitions")
         .select("*")
@@ -539,7 +549,6 @@ async def update_requisition_status(
             detail=f"Transição inválida de '{current_status}' para '{target_status}'.",
         )
 
-    # Controle de permissão RBAC e isolamento de filial por transição
     if target_status in ("aprovada", "despachada") and user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -577,7 +586,6 @@ async def update_requisition_status(
     stores_map = _fetch_stores_map(user.client, str(user.company_id))
     store_name = stores_map.get(store_id_str, "")
 
-    # Atualização de quantidades aprovadas (somente antes do despacho)
     if payload.items_approved is not None:
         if target_status != "aprovada" and current_status != "pendente":
             raise HTTPException(
@@ -596,7 +604,6 @@ async def update_requisition_status(
                     {"quantity_approved": qty_app}
                 ).eq("requisition_id", req_id_str).eq("product_id", pid).execute()
 
-    # Se aprovando sem lista explícita, assume integralmente o solicitado para itens sem valor aprovado
     if target_status == "aprovada":
         for item in req_items:
             if item.get("quantity_approved") is None:
@@ -613,7 +620,6 @@ async def update_requisition_status(
     )
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # SAGA Passo 1 — Despacho do Armazém (aprovada -> despachada): baixa física no MS Warehouse!
     if target_status == "despachada":
         dispatch_items = []
         for item in req_items:
@@ -672,7 +678,6 @@ async def update_requisition_status(
             db_client=user.client,
         )
 
-    # SAGA Passo 2 — Cancelamento após despacho (despachada -> cancelada): estorna saldo ao MS Warehouse!
     elif target_status == "cancelada" and current_status == "despachada":
         release_items = []
         for item in req_items:
@@ -720,7 +725,6 @@ async def update_requisition_status(
             db_client=user.client,
         )
 
-    # Recebimento na Loja (despachada -> recebida): credita inventário local + store_movements
     elif target_status == "recebida":
         _credit_store_inventory_on_receipt(
             user.client,
@@ -739,7 +743,6 @@ async def update_requisition_status(
             db_client=user.client,
         )
 
-    # Demais transições simples (`pendente -> aprovada`, `pendente|aprovada -> cancelada`)
     else:
         update_fields: Dict[str, Any] = {"status": target_status, "updated_at": now_iso}
         if payload.notes is not None:

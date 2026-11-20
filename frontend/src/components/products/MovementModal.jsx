@@ -47,7 +47,6 @@ export default function MovementModal({ product, onClose, onSubmit }) {
       handleDecrement();
       return;
     }
-    // Entrada e saída só aceitam dígitos inteiros positivos
     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
       e.preventDefault();
     }

@@ -255,10 +255,10 @@ async def record_store_movement(
     payload: StoreInventoryMovement,
     user: AuthedUser = Depends(get_current_user_with_company),
 ):
+    """Registra movimentação manual no estoque da filial com auditoria em store_movements."""
     _verify_store_ownership(user, store_id)
     _enforce_branch_access(user, store_id)
 
-    # Verifica no MS Warehouse que o produto pertence ao catálogo da empresa
     prod_map = await _fetch_products_batch(
         str(user.company_id), [str(payload.product_id)], user.access_token
     )
@@ -332,7 +332,6 @@ async def record_store_movement(
                 detail="Falha ao registrar movimentação no estoque da filial.",
             ) from exc
 
-    # Caminho exclusivo para o cliente fake em testes sem stub da RPC configurado
     inv_resp = (
         user.client.table("store_inventory")
         .select("*")
@@ -418,7 +417,6 @@ async def update_store_min_stock(
     _verify_store_ownership(user, store_id)
     _enforce_branch_access(user, store_id)
 
-    # Garante que o produto pertence ao catálogo central da mesma empresa antes de gravar em store_inventory
     prod_map = await _fetch_products_batch(
         str(user.company_id), [str(product_id)], user.access_token
     )

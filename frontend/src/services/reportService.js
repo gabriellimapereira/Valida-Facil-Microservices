@@ -1,7 +1,3 @@
-// Geração de relatórios diretamente no Frontend via jsPDF + autoTable.
-// Isso elimina 100% a dependência de bibliotecas de sistema C (como WeasyPrint/Pango/Cairo no backend),
-// permitindo execução instantânea e compatibilidade universal na Vercel/Netlify/Serverless.
-
 import { MOCK_PRODUCTS, MOCK_COMPANY } from "../data/mockData";
 import { apiClient, getAccessToken } from "../lib/apiClient";
 
@@ -12,7 +8,6 @@ export async function generateReport({
   dateTo,
   expiryWindowDays = 15,
 }) {
-  // Se for solicitado formato alternativo no backend (ex: Excel)
   if (format === "xlsx") {
     const result = await apiClient.post("/reports/generate", {
       report_type: reportType,
@@ -24,7 +19,6 @@ export async function generateReport({
     return { url: result.url, filename: result.filename, expiresInSeconds: result.expires_in_seconds };
   }
 
-  // Geração 100% nativa no Frontend em PDF
   let company = { name: "Valida Fácil", cnpj: "", phone: "", email: "", address: "" };
   let responsibleName = "Responsável pelo Estoque";
   let products = [];
@@ -51,7 +45,6 @@ export async function generateReport({
     movements = [];
   }
 
-  // 3. Gerar documento PDF no frontend com layout idêntico ao institucional (lazy-loaded)
   const { generatePdfDocument } = await import("./pdfReportGenerator");
   const doc = generatePdfDocument({
     reportType,
@@ -85,7 +78,6 @@ export async function generateReport({
 export async function downloadFile(url, filename) {
   if (!url) return;
 
-  // Se já for uma URL do tipo blob local, aciona download direto
   if (url.startsWith("blob:")) {
     const link = document.createElement("a");
     link.href = url;
@@ -103,7 +95,6 @@ export async function downloadFile(url, filename) {
     return;
   }
 
-  // Caso seja URL remota
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error("Erro ao obter arquivo gerado");

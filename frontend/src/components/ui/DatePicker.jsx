@@ -42,7 +42,6 @@ export default function DatePicker({
   const popoverRef = useRef(null);
   const [coords, setCoords] = useState({ top: 0, left: 0, openUpward: false });
 
-  // Data de referência de visualização do calendário (mês/ano)
   const getInitialViewDate = () => {
     if (value && typeof value === "string" && value.includes("-")) {
       const d = new Date(`${value}T00:00:00`);
@@ -62,7 +61,6 @@ export default function DatePicker({
   const [viewYear, setViewYear] = useState(initialDate.getFullYear() || new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth() || new Date().getMonth());
 
-  // Atualiza o mês exibido se o valor externo ou limite mínimo mudar
   useEffect(() => {
     if (value && typeof value === "string" && value.includes("-")) {
       const [y, m] = value.split("-").map(Number);
@@ -81,7 +79,6 @@ export default function DatePicker({
     }
   }, [value, min]);
 
-  // Calcula a posição na tela (fixed) ancorada no gatilho
   const computePosition = () => {
     if (!triggerRef.current) return null;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -89,14 +86,12 @@ export default function DatePicker({
     const popoverHeight = 300;
     const gap = 6;
 
-    // Espaço abaixo vs acima
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUpward = spaceBelow < popoverHeight && rect.top > popoverHeight;
 
     let top = openUpward ? rect.top - popoverHeight - gap : rect.bottom + gap;
     let left = rect.left;
 
-    // Evita transbordar para fora da tela à direita
     if (left + popoverWidth > window.innerWidth - 12) {
       left = Math.max(12, rect.right - popoverWidth);
     }
@@ -117,7 +112,6 @@ export default function DatePicker({
     }
   };
 
-  // Mantém a posição sincronizada caso a tela role ou redimensione
   useIsoLayoutEffect(() => {
     if (isOpen) {
       const handleReposition = () => {
@@ -133,7 +127,6 @@ export default function DatePicker({
     }
   }, [isOpen]);
 
-  // Fecha o calendário ao clicar fora ou apertar Escape
   useEffect(() => {
     if (!isOpen) return;
 
@@ -239,14 +232,12 @@ export default function DatePicker({
     setIsOpen(false);
   };
 
-  // Monta a matriz de dias do mês atual e adjacentes
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
 
   const days = [];
 
-  // Dias do mês anterior
   for (let i = firstDayOfMonth - 1; i >= 0; i--) {
     days.push({
       day: daysInPrevMonth - i,
@@ -256,7 +247,6 @@ export default function DatePicker({
     });
   }
 
-  // Dias do mês atual
   for (let i = 1; i <= daysInMonth; i++) {
     days.push({
       day: i,
@@ -266,8 +256,7 @@ export default function DatePicker({
     });
   }
 
-  // Dias do próximo mês para completar semanas
-  const remainingDays = 42 - days.length; // 6 linhas completas
+  const remainingDays = 42 - days.length;
   for (let i = 1; i <= remainingDays; i++) {
     days.push({
       day: i,

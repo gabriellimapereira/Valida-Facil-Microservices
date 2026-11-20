@@ -198,7 +198,6 @@ async def dispatch_requisition_stock(
         )
         catalog = {str(row["id"]): row for row in (resp.data or [])}
 
-        # Fase 1: Validação integral antes de deduzir qualquer item (evita despacho parcial)
         validated_pairs: List[tuple[Dict[str, Any], int]] = []
         for item in payload.items:
             prod = catalog.get(str(item.product_id))
@@ -218,7 +217,6 @@ async def dispatch_requisition_stock(
                 )
             validated_pairs.append((prod, item.quantity))
 
-        # Prioridade FEFO na ordem de separação e alocação
         validated_pairs.sort(
             key=lambda pair: (
                 pair[0].get("expiry") is None,
@@ -299,7 +297,6 @@ async def dispatch_requisition_stock(
                 }
             ).eq("requisition_id", req_id).execute()
         except Exception as exc:
-            # Rollback compensatório dos itens já deduzidos nesta requisição se algum passo falhar
             for done_prod, done_qty in completed:
                 try:
                     _apply_central_delta(

@@ -69,7 +69,6 @@ async def list_central_availability(
             )
         )
 
-    # Ordenação FEFO: com validade definida mais próxima primeiro; sem validade por último
     result.sort(
         key=lambda item: (
             item.expiry is None,

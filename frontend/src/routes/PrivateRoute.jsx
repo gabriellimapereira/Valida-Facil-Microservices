@@ -7,8 +7,6 @@ export default function PrivateRoute() {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  // Enquanto restaura a sessão salva (localStorage), não decide nada ainda
-  // — evita redirecionar pro login um usuário que na verdade já está logado.
   if (loading) {
     return <FullScreenLoader />;
   }

@@ -47,7 +47,6 @@ class FakeQuery:
         self._order_desc = False
         self._limit = None
 
-    # -- filtros --------------------------------------------------------
     def select(self, *_args, **_kwargs):
         return self
 
@@ -102,7 +101,6 @@ class FakeQuery:
         self._mode = "maybe_single"
         return self
 
-    # -- escrita ----------------------------------------------------------
     def insert(self, payload):
         self._pending_insert = payload if isinstance(payload, list) else [payload]
         return self

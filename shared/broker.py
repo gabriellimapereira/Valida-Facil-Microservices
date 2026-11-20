@@ -312,6 +312,7 @@ class EventBroker:
         binding_keys: List[str],
         handler: Callable[[DomainEvent], Awaitable[None]],
     ) -> None:
+        """Inicia consumo assíncrono RabbitMQ com binding keys, DLQ e retentativas."""
         if not settings.is_rabbitmq_configured:
             return
 
@@ -338,7 +339,6 @@ class EventBroker:
                             durable=True,
                         )
 
-                        # Configura Dead Letter Exchange (DLX) e Dead Letter Queue (DLQ)
                         dlx_name = f"{settings.rabbitmq_exchange}.dlx"
                         dlx = await channel.declare_exchange(
                             dlx_name,
@@ -349,7 +349,6 @@ class EventBroker:
                         dlq = await channel.declare_queue(dlq_name, durable=True)
                         await dlq.bind(dlx, routing_key="#")
 
-                        # Declara fila de processamento principal (com fallback defensivo)
                         try:
                             queue = await channel.declare_queue(
                                 queue_name,
@@ -387,7 +386,6 @@ class EventBroker:
                                     await message.reject(requeue=False)
                                     continue
 
-                                # Retentativa local controlada antes de declarar falha definitiva
                                 success = False
                                 max_retries = 3
                                 last_error: Optional[Exception] = None

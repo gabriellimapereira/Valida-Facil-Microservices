@@ -151,7 +151,6 @@ class CircuitBreaker:
         }
 
 
-# Exceções elegíveis para retry automático
 RETRYABLE_EXCEPTIONS = (
     httpx.ConnectError,
     httpx.ConnectTimeout,
@@ -174,9 +173,7 @@ async def execute_with_resilience(
     jitter: float = 0.05,
     circuit_breaker: Optional[CircuitBreaker] = None,
 ) -> httpx.Response:
-    """
-    Executa uma chamada HTTP com Circuit Breaker e Retry com Exponential Backoff + Jitter.
-    """
+    """Executa uma chamada HTTP com Circuit Breaker e Retry com Exponential Backoff + Jitter."""
     if circuit_breaker and not circuit_breaker.is_allowed():
         raise CircuitBreakerOpenException(
             circuit_breaker.service_name,
@@ -189,7 +186,6 @@ async def execute_with_resilience(
         try:
             resp = await coroutine_fn()
 
-            # Status de indisponibilidade transitória em método idempotente
             if (
                 resp.status_code in RETRYABLE_STATUS_CODES
                 and method.upper() in SAFE_IDEMPOTENT_METHODS

@@ -55,7 +55,6 @@ function normalizeInventoryItem(row) {
     quantity: Number(row.quantity ?? 0),
     minStock: Number(row.min_stock ?? row.minStock ?? 0),
     updatedAt: row.updated_at ?? row.updatedAt,
-    // Mantém aliases snake_case para qualquer consumidor legado
     store_id: row.store_id ?? row.storeId,
     product_id: row.product_id ?? row.productId,
     product_name: row.product_name ?? row.productName ?? "Produto",

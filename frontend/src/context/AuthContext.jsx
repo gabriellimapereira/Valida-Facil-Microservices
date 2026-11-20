@@ -7,10 +7,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  // Começa "true": o app precisa checar se já existe uma sessão JWT salva
-  // antes de decidir se mostra o login ou não —
-  // sem isso, recarregar a página sempre jogaria o usuário pra tela de
-  // login mesmo estando logado.
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (authUser) => {
@@ -95,8 +91,6 @@ export function AuthProvider({ children }) {
       storeId: profile?.store_id ?? null,
       role: profile?.role ?? null,
       isAuthenticated: Boolean(user),
-      // true = usuário autenticado mas ainda sem empresa vinculada
-      // (onboarding pendente — telas do Passo 2 vão resolver isso).
       needsOnboarding: Boolean(user) && !profile?.company_id,
       loading,
       signIn,

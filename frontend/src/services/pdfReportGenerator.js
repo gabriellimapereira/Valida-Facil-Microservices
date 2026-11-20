@@ -58,16 +58,15 @@ function drawHeader(doc, company, reportMeta) {
   const rightX = 561;
   let topY = 32;
 
-  // 1. Coluna Esquerda: Dados da Empresa
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
-  doc.setTextColor(15, 23, 42); // #0F172A
+  doc.setTextColor(15, 23, 42);
   const companyName = (company?.name || "SUA EMPRESA").toUpperCase();
   doc.text(companyName, leftX, topY);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105); // #475569
+  doc.setTextColor(71, 85, 105);
 
   let curY = topY + 11;
   const cnpjText = `CNPJ: ${company?.cnpj || "Não informado"}`;
@@ -83,7 +82,6 @@ function drawHeader(doc, company, reportMeta) {
     doc.text(addr[0], leftX, curY);
   }
 
-  // 2. Coluna Central: Título do Relatório
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
@@ -99,13 +97,12 @@ function drawHeader(doc, company, reportMeta) {
   doc.setTextColor(100, 116, 139);
   doc.text(reportMeta.filterInfo, centerX, topY + 22, { align: "center" });
 
-  // 3. Coluna Direita: Metadados
   const badgeText = "VALIDA FÁCIL";
-  doc.setFillColor(254, 243, 199); // #FEF3C7
+  doc.setFillColor(254, 243, 199);
   doc.roundedRect(rightX - 65, topY - 8, 65, 12, 3, 3, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6.8);
-  doc.setTextColor(146, 64, 14); // #92400E
+  doc.setTextColor(146, 64, 14);
   doc.text(badgeText, rightX - 32.5, topY, { align: "center" });
 
   doc.setFont("helvetica", "normal");
@@ -115,11 +112,10 @@ function drawHeader(doc, company, reportMeta) {
   doc.text(`Emissão: ${emitDate}`, rightX, topY + 12, { align: "right" });
   doc.text(`Resp.: ${reportMeta.responsibleName || "Responsável pelo Estoque"}`, rightX, topY + 22, { align: "right" });
 
-  // 4. Barra divisória escura com acento âmbar
   const barY = 66;
-  doc.setFillColor(15, 23, 42); // #0F172A
+  doc.setFillColor(15, 23, 42);
   doc.rect(leftX, barY, 527, 2.5, "F");
-  doc.setFillColor(217, 119, 6); // #D97706
+  doc.setFillColor(217, 119, 6);
   doc.rect(leftX, barY, 55, 2.5, "F");
 
   return barY + 9;
@@ -134,13 +130,11 @@ function drawSummaryCards(doc, startY, leftCardData, rightCardData) {
   const leftX = 34;
   const rightX = 303;
 
-  // --- Cartão Esquerdo ---
-  doc.setDrawColor(203, 213, 225); // #CBD5E1
+  doc.setDrawColor(203, 213, 225);
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(leftX, startY, cardWidth, cardHeight, 4, 4, "FD");
 
-  // Cabeçalho Cartão Esquerdo
-  doc.setFillColor(241, 245, 249); // #F1F5F9
+  doc.setFillColor(241, 245, 249);
   doc.rect(leftX, startY, cardWidth, 14, "F");
   doc.line(leftX, startY + 14, leftX + cardWidth, startY + 14);
   doc.setFont("helvetica", "bold");
@@ -148,7 +142,6 @@ function drawSummaryCards(doc, startY, leftCardData, rightCardData) {
   doc.setTextColor(30, 41, 59);
   doc.text(leftCardData.title.toUpperCase(), leftX + 8, startY + 10);
 
-  // Linhas do Cartão Esquerdo
   let rowY = startY + 24;
   leftCardData.rows.forEach((row) => {
     doc.setFont("helvetica", "normal");
@@ -166,12 +159,10 @@ function drawSummaryCards(doc, startY, leftCardData, rightCardData) {
     rowY += 9.5;
   });
 
-  // --- Cartão Direito (Destaque Principal) ---
   doc.setDrawColor(203, 213, 225);
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(rightX, startY, cardWidth, cardHeight, 4, 4, "FD");
 
-  // Cabeçalho Cartão Direito
   doc.setFillColor(241, 245, 249);
   doc.rect(rightX, startY, cardWidth, 14, "F");
   doc.line(rightX, startY + 14, rightX + cardWidth, startY + 14);
@@ -180,7 +171,6 @@ function drawSummaryCards(doc, startY, leftCardData, rightCardData) {
   doc.setTextColor(30, 41, 59);
   doc.text(rightCardData.title.toUpperCase(), rightX + 8, startY + 10);
 
-  // Conteúdo Destaque Cartão Direito
   const centerX = rightX + cardWidth / 2;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
@@ -209,31 +199,25 @@ function drawSummaryCards(doc, startY, leftCardData, rightCardData) {
  */
 function applyFooters(doc) {
   const pageCount = doc.internal.getNumberOfPages();
-  const pageHeight = 841.89; // A4 height in pt
+  const pageHeight = 841.89;
 
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    // Linha fina separadora
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.5);
     doc.line(34, pageHeight - 25, 561, pageHeight - 25);
 
-    // Texto rodapé esquerdo
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
     doc.text("Valida Fácil • Gestão Inteligente de Estoque", 34, pageHeight - 14);
 
-    // Texto rodapé direito (Página X de Y)
     doc.setFont("helvetica", "bold");
     doc.setTextColor(100, 116, 139);
     doc.text(`Página ${i} de ${pageCount}`, 561, pageHeight - 14, { align: "right" });
   }
 }
 
-// --------------------------------------------------------------------------
-// 1. Relatório de Estoque Atual
-// --------------------------------------------------------------------------
 function buildStockSnapshotPdf(doc, company, responsibleName, products) {
   const todayFmt = formatDate(new Date().toISOString());
   const reportMeta = {
@@ -342,9 +326,6 @@ function buildStockSnapshotPdf(doc, company, responsibleName, products) {
   applyFooters(doc);
 }
 
-// --------------------------------------------------------------------------
-// 2. Relatório de Produtos a Vencer
-// --------------------------------------------------------------------------
 function buildExpiryPdf(doc, company, responsibleName, products, windowDays = 15) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() + Number(windowDays));
@@ -429,7 +410,7 @@ function buildExpiryPdf(doc, company, responsibleName, products, windowDays = 15
     title: "Valor em Risco",
     label: "Impacto Financeiro Potencial",
     value: formatBRL(totalRiskValue),
-    valueColor: [185, 28, 28], // Vermelho alerta
+    valueColor: [185, 28, 28],
     hint: "Soma do valor de produtos na janela",
   };
 
@@ -476,15 +457,14 @@ function buildExpiryPdf(doc, company, responsibleName, products, windowDays = 15
       6: { halign: "center", cellWidth: 70, fontStyle: "bold" },
     },
     didParseCell: (data) => {
-      // Cores nas badges de urgência
       if (data.section === "body" && data.column.index === 6) {
         const text = String(data.cell.raw);
         if (text.includes("Vencido") || text.includes("Hoje") || text.startsWith("1 ") || text.startsWith("2 ") || text.startsWith("3 ")) {
-          data.cell.styles.textColor = [185, 28, 28]; // Vermelho
+          data.cell.styles.textColor = [185, 28, 28];
         } else if (text.startsWith("4 ") || text.startsWith("5 ") || text.startsWith("6 ") || text.startsWith("7 ")) {
-          data.cell.styles.textColor = [180, 83, 9]; // Âmbar
+          data.cell.styles.textColor = [180, 83, 9];
         } else {
-          data.cell.styles.textColor = [15, 118, 110]; // Teal
+          data.cell.styles.textColor = [15, 118, 110];
         }
       }
     },
@@ -493,9 +473,6 @@ function buildExpiryPdf(doc, company, responsibleName, products, windowDays = 15
   applyFooters(doc);
 }
 
-// --------------------------------------------------------------------------
-// 3. Relatório de Movimentações
-// --------------------------------------------------------------------------
 function buildMovementsPdf(doc, company, responsibleName, movements, dateFrom, dateTo) {
   let periodStr = "Histórico completo de movimentações";
   if (dateFrom || dateTo) {
@@ -617,9 +594,6 @@ function buildMovementsPdf(doc, company, responsibleName, movements, dateFrom, d
   applyFooters(doc);
 }
 
-// --------------------------------------------------------------------------
-// 4. Relatório de Giro de Estoque
-// --------------------------------------------------------------------------
 function buildTurnoverPdf(doc, company, responsibleName, movements, dateFrom, dateTo) {
   let periodStr = "Histórico consolidado de saídas";
   if (dateFrom || dateTo) {
@@ -637,7 +611,6 @@ function buildTurnoverPdf(doc, company, responsibleName, movements, dateFrom, da
 
   const startY = drawHeader(doc, company, reportMeta);
 
-  // Consolidação de saídas por produto
   const totals = {};
   movements.forEach((m) => {
     if (m.movement_type !== "saida") return;
